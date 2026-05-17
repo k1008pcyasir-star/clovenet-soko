@@ -1,5 +1,6 @@
 import { Outlet } from "react-router-dom"
 import Footer from "./Footer"
+import InstallPrompt from "../pwa/InstallPrompt"
 
 function PublicLayout() {
   return (
@@ -7,6 +8,8 @@ function PublicLayout() {
       <div className="flex-1">
         <Outlet />
       </div>
+
+      <InstallPrompt />
 
       <Footer />
     </main>
