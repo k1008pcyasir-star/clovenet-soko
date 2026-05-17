@@ -2,16 +2,17 @@ import { useMemo, useState } from "react"
 import {
   AlertCircle,
   BadgeCheck,
+  Camera,
   Check,
   Edit3,
   Eye,
+  ImagePlus,
   LockKeyhole,
   Package,
   Plus,
   Save,
-  ShoppingBag,
-  Store,
   Trash2,
+  X,
 } from "lucide-react"
 
 import { StorageService } from "../../../services/storageService"
@@ -42,6 +43,63 @@ const initialForm = {
   specs: "",
   description: "",
   featured: false,
+  images: [],
+}
+
+const MAX_IMAGE_WIDTH = 900
+const IMAGE_QUALITY = 0.75
+
+function getImageLimitByVendor(vendor) {
+  if (!vendor) return 3
+
+  const plan = vendor.plan || "free"
+
+  if (plan === "free") {
+    return 3
+  }
+
+  return 5
+}
+
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith("image/")) {
+      reject(new Error("File si picha sahihi."))
+      return
+    }
+
+    const reader = new FileReader()
+
+    reader.onload = () => {
+      const image = new Image()
+
+      image.onload = () => {
+        const scale = Math.min(MAX_IMAGE_WIDTH / image.width, 1)
+        const canvas = document.createElement("canvas")
+
+        canvas.width = Math.round(image.width * scale)
+        canvas.height = Math.round(image.height * scale)
+
+        const context = canvas.getContext("2d")
+        context.drawImage(image, 0, 0, canvas.width, canvas.height)
+
+        const compressedImage = canvas.toDataURL("image/jpeg", IMAGE_QUALITY)
+        resolve(compressedImage)
+      }
+
+      image.onerror = () => {
+        reject(new Error("Picha imeshindwa kusomwa."))
+      }
+
+      image.src = reader.result
+    }
+
+    reader.onerror = () => {
+      reject(new Error("Imeshindikana kusoma picha."))
+    }
+
+    reader.readAsDataURL(file)
+  })
 }
 
 function VendorProductsPage() {
@@ -63,6 +121,7 @@ function VendorProductsPage() {
   }, [products, vendor])
 
   const productLimit = Number(vendor?.productLimit || 15)
+  const imageLimit = getImageLimitByVendor(vendor)
   const remainingProducts = Math.max(productLimit - vendorProducts.length, 0)
   const hasReachedLimit = vendorProducts.length >= productLimit
   const productUsagePercent = Math.min(
@@ -79,6 +138,52 @@ function VendorProductsPage() {
       ...(name === "category" && value !== "Other"
         ? { otherCategory: "" }
         : {}),
+    }))
+
+    setError("")
+  }
+
+  async function handleImageUpload(event) {
+    const selectedFiles = Array.from(event.target.files || [])
+
+    if (!selectedFiles.length) return
+
+    const remainingSlots = imageLimit - form.images.length
+
+    if (remainingSlots <= 0) {
+      setError(`Kwa sasa unaweza kuweka hadi picha ${imageLimit} kwa bidhaa.`)
+      event.target.value = ""
+      return
+    }
+
+    const filesToProcess = selectedFiles.slice(0, remainingSlots)
+
+    try {
+      const compressedImages = await Promise.all(
+        filesToProcess.map((file) => compressImage(file))
+      )
+
+      setForm((current) => ({
+        ...current,
+        images: [...current.images, ...compressedImages],
+      }))
+
+      if (selectedFiles.length > remainingSlots) {
+        setError(`Umezidisha picha. Tumepokea picha ${remainingSlots} tu.`)
+      } else {
+        setError("")
+      }
+    } catch (uploadError) {
+      setError(uploadError.message || "Imeshindikana kupakia picha.")
+    } finally {
+      event.target.value = ""
+    }
+  }
+
+  function removeImage(indexToRemove) {
+    setForm((current) => ({
+      ...current,
+      images: current.images.filter((_, index) => index !== indexToRemove),
     }))
 
     setError("")
@@ -136,6 +241,8 @@ function VendorProductsPage() {
       return
     }
 
+    const productImages = form.images.slice(0, imageLimit)
+
     const newProduct = {
       id: createId("product"),
       vendorId: vendor.id,
@@ -146,6 +253,8 @@ function VendorProductsPage() {
       specs: form.specs.trim(),
       description: form.description.trim(),
       featured: form.featured,
+      image: productImages[0] || "",
+      images: productImages,
       views: 0,
       orderClicks: 0,
       createdAt: new Date().toISOString(),
@@ -246,8 +355,8 @@ function VendorProductsPage() {
               </h2>
 
               <p className="mt-1 text-xs font-semibold leading-5 text-[var(--color-muted)]">
-                Kwa sasa unaweza kuongeza hadi bidhaa {productLimit} kwenye duka
-                lako.
+                Kwa sasa unaweza kuongeza hadi bidhaa {productLimit}. Kila
+                bidhaa inaweza kuwa na picha hadi {imageLimit}.
               </p>
             </div>
 
@@ -334,6 +443,88 @@ function VendorProductsPage() {
             )}
 
             <div className="mt-5 grid gap-4 md:grid-cols-2">
+              <div className="md:col-span-2">
+                <label className="text-xs font-black text-gray-700">
+                  Picha za bidhaa
+                </label>
+
+                <div className="mt-2 rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-bg)] p-4">
+                  <label
+                    className={`flex cursor-pointer flex-col items-center justify-center rounded-2xl bg-white px-4 py-5 text-center shadow-sm transition hover:bg-[var(--color-green-soft)] ${
+                      hasReachedLimit || form.images.length >= imageLimit
+                        ? "pointer-events-none opacity-60"
+                        : ""
+                    }`}
+                  >
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleImageUpload}
+                      disabled={hasReachedLimit || form.images.length >= imageLimit}
+                      className="hidden"
+                    />
+
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--color-green-soft)] text-[var(--color-green-dark)]">
+                      <ImagePlus size={24} strokeWidth={2.6} />
+                    </div>
+
+                    <p className="mt-3 text-sm font-black text-gray-950">
+                      Chagua picha za bidhaa
+                    </p>
+
+                    <p className="mt-1 text-xs font-semibold leading-5 text-[var(--color-muted)]">
+                      Unaweza kuweka hadi picha {imageLimit}. Picha ya kwanza
+                      ndiyo itaonekana kama picha kuu.
+                    </p>
+                  </label>
+
+                  {form.images.length > 0 && (
+                    <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-4">
+                      {form.images.map((image, index) => (
+                        <div
+                          key={`${image.slice(0, 20)}-${index}`}
+                          className="group relative overflow-hidden rounded-2xl bg-white shadow-sm"
+                        >
+                          <img
+                            src={image}
+                            alt={`Preview ${index + 1}`}
+                            className="h-24 w-full object-cover"
+                          />
+
+                          <button
+                            type="button"
+                            onClick={() => removeImage(index)}
+                            className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white transition hover:bg-red-600"
+                            aria-label="Ondoa picha"
+                          >
+                            <X size={14} strokeWidth={2.8} />
+                          </button>
+
+                          {index === 0 && (
+                            <span className="absolute bottom-1.5 left-1.5 rounded-full bg-[var(--color-green)] px-2 py-0.5 text-[9px] font-black text-[var(--color-navy)]">
+                              Main
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="mt-3 flex items-center justify-between gap-3 text-xs font-black">
+                    <span className="text-[var(--color-muted)]">
+                      {form.images.length}/{imageLimit} picha
+                    </span>
+
+                    {form.images.length >= imageLimit && (
+                      <span className="text-[var(--color-green-dark)]">
+                        Limit imefikiwa
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label className="text-xs font-black text-gray-700">
                   Jina la bidhaa
@@ -516,81 +707,104 @@ function VendorProductsPage() {
               </div>
             ) : (
               <div className="mt-5 space-y-3">
-                {vendorProducts.map((product) => (
-                  <article
-                    key={product.id}
-                    className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4"
-                  >
-                    <div className="flex gap-3">
-                      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white text-[var(--color-navy)] shadow-sm">
-                        <Package size={30} strokeWidth={2.3} />
-                      </div>
+                {vendorProducts.map((product) => {
+                  const productImages = Array.isArray(product.images)
+                    ? product.images
+                    : product.image
+                      ? [product.image]
+                      : []
+                  const mainImage = productImages[0] || ""
 
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <h3 className="line-clamp-1 text-sm font-black text-gray-950">
-                              {product.name}
-                            </h3>
+                  return (
+                    <article
+                      key={product.id}
+                      className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4"
+                    >
+                      <div className="flex gap-3">
+                        <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white text-[var(--color-navy)] shadow-sm">
+                          {mainImage ? (
+                            <img
+                              src={mainImage}
+                              alt={product.name}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <Package size={30} strokeWidth={2.3} />
+                          )}
 
-                            <p className="mt-1 text-xs font-semibold text-[var(--color-muted)]">
-                              {product.category || "Bidhaa"}
-                            </p>
-                          </div>
-
-                          {product.featured && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-yellow)] px-2.5 py-1 text-[10px] font-black text-[var(--color-navy)]">
-                              <Check size={12} strokeWidth={3} />
-                              Featured
+                          {productImages.length > 1 && (
+                            <span className="absolute bottom-1 right-1 rounded-full bg-black/65 px-2 py-0.5 text-[9px] font-black text-white">
+                              {productImages.length}
                             </span>
                           )}
                         </div>
 
-                        <p className="mt-2 text-lg font-black text-[var(--color-navy)]">
-                          {formatMoney(product.price)}
-                        </p>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <h3 className="line-clamp-1 text-sm font-black text-gray-950">
+                                {product.name}
+                              </h3>
 
-                        {Number(product.oldPrice) > Number(product.price) && (
-                          <p className="mt-0.5 text-xs font-semibold text-gray-400 line-through">
-                            {formatMoney(product.oldPrice)}
+                              <p className="mt-1 text-xs font-semibold text-[var(--color-muted)]">
+                                {product.category || "Bidhaa"}
+                              </p>
+                            </div>
+
+                            {product.featured && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-yellow)] px-2.5 py-1 text-[10px] font-black text-[var(--color-navy)]">
+                                <Check size={12} strokeWidth={3} />
+                                Featured
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="mt-2 text-lg font-black text-[var(--color-navy)]">
+                            {formatMoney(product.price)}
                           </p>
-                        )}
 
-                        <p className="mt-1 line-clamp-2 text-xs font-semibold leading-5 text-[var(--color-muted)]">
-                          {product.specs ||
-                            product.description ||
-                            "Maelezo hayajawekwa."}
-                        </p>
+                          {Number(product.oldPrice) > Number(product.price) && (
+                            <p className="mt-0.5 text-xs font-semibold text-gray-400 line-through">
+                              {formatMoney(product.oldPrice)}
+                            </p>
+                          )}
 
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            disabled
-                            title="Feature hii itaongezwa baadaye"
-                            className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--color-border)] bg-white px-3 py-2 text-xs font-black text-gray-400 opacity-70"
-                          >
-                            <Edit3 size={13} strokeWidth={2.7} />
-                            Edit · Inakuja
-                          </button>
+                          <p className="mt-1 line-clamp-2 text-xs font-semibold leading-5 text-[var(--color-muted)]">
+                            {product.specs ||
+                              product.description ||
+                              "Maelezo hayajawekwa."}
+                          </p>
 
-                          <button
-                            type="button"
-                            onClick={() => deleteProduct(product.id)}
-                            className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-black text-red-600 transition hover:bg-red-100"
-                          >
-                            <Trash2 size={13} strokeWidth={2.7} />
-                            Delete
-                          </button>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              disabled
+                              title="Feature hii itaongezwa baadaye"
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--color-border)] bg-white px-3 py-2 text-xs font-black text-gray-400 opacity-70"
+                            >
+                              <Edit3 size={13} strokeWidth={2.7} />
+                              Edit · Inakuja
+                            </button>
 
-                          <div className="ml-auto inline-flex items-center gap-1.5 rounded-xl bg-white px-3 py-2 text-xs font-black text-[var(--color-muted)]">
-                            <Eye size={13} strokeWidth={2.7} />
-                            {product.views || 0} views
+                            <button
+                              type="button"
+                              onClick={() => deleteProduct(product.id)}
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-black text-red-600 transition hover:bg-red-100"
+                            >
+                              <Trash2 size={13} strokeWidth={2.7} />
+                              Delete
+                            </button>
+
+                            <div className="ml-auto inline-flex items-center gap-1.5 rounded-xl bg-white px-3 py-2 text-xs font-black text-[var(--color-muted)]">
+                              <Eye size={13} strokeWidth={2.7} />
+                              {product.views || 0} views
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  </article>
-                ))}
+                    </article>
+                  )
+                })}
               </div>
             )}
           </div>

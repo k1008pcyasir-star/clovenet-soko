@@ -36,6 +36,20 @@ const safeNumber = (value, fallback = 0) => {
   return Number.isFinite(number) ? number : fallback
 }
 
+const getProductImages = (product) => {
+  if (!product) return []
+
+  if (Array.isArray(product.images) && product.images.length > 0) {
+    return product.images.filter(Boolean)
+  }
+
+  if (product.image) {
+    return [product.image]
+  }
+
+  return []
+}
+
 export const StorageService = {
   getVendors() {
     return read(STORAGE_KEYS.vendors, [])
@@ -84,6 +98,7 @@ export const StorageService = {
 
     const cart = this.getCart()
     const existingItem = cart.find((item) => item.productId === product.id)
+    const productImages = getProductImages(product)
 
     let updatedCart
 
@@ -93,6 +108,11 @@ export const StorageService = {
           ? {
               ...item,
               quantity: safeNumber(item.quantity, 1) + 1,
+              image: item.image || productImages[0] || "",
+              images:
+                Array.isArray(item.images) && item.images.length > 0
+                  ? item.images
+                  : productImages,
             }
           : item
       )
@@ -107,7 +127,8 @@ export const StorageService = {
           category: product.category || "",
           price: safeNumber(product.price),
           oldPrice: safeNumber(product.oldPrice),
-          image: product.image || "",
+          image: productImages[0] || "",
+          images: productImages,
           emoji: product.emoji || "",
           quantity: 1,
           addedAt: new Date().toISOString(),

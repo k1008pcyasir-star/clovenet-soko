@@ -14,6 +14,7 @@ import {
   UserRound,
 } from "lucide-react"
 
+import BrandLogo from "../../../components/brand/BrandLogo"
 import { StorageService } from "../../../services/storageService"
 import { createId, normalizePhone } from "../../../utils/formatters"
 
@@ -131,11 +132,9 @@ function VendorRegisterPage() {
       category: getFinalCategory(),
       description: form.description.trim(),
 
-      // Default free access ya mwanzo. Limit itaonyeshwa ndani ya dashboard/product page.
       plan: "free",
       productLimit: 15,
 
-      // MVP only: kwenye production, password haitahifadhiwa plain text.
       password: form.password,
 
       status: "pending_verification",
@@ -155,7 +154,17 @@ function VendorRegisterPage() {
       <section className="min-h-screen bg-[var(--color-bg)] px-4 py-6 text-[var(--color-text)] md:px-6">
         <div className="mx-auto flex min-h-[calc(100vh-3rem)] max-w-3xl items-center justify-center">
           <div className="w-full rounded-[2rem] border border-[var(--color-border)] bg-white p-6 text-center shadow-sm md:p-10">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[1.5rem] bg-[var(--color-green-soft)] text-[var(--color-green-dark)]">
+            <div className="flex justify-center">
+              <BrandLogo
+                title="CloveNet Soko"
+                subtitle="Vendor Registration"
+                showSubtitle
+                iconSize="lg"
+                textSize="lg"
+              />
+            </div>
+
+            <div className="mx-auto mt-6 flex h-16 w-16 items-center justify-center rounded-[1.5rem] bg-[var(--color-green-soft)] text-[var(--color-green-dark)]">
               <CheckCircle2 size={34} strokeWidth={2.5} />
             </div>
 
@@ -231,14 +240,14 @@ function VendorRegisterPage() {
             className="rounded-[2rem] border border-[var(--color-border)] bg-white p-5 shadow-sm md:p-7"
           >
             <div className="text-center">
-              <div className="flex items-center justify-center gap-3">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-navy)] text-white shadow-sm">
-                  <Store size={24} strokeWidth={2.6} />
-                </div>
-
-                <p className="text-xl font-black leading-tight text-gray-950">
-                  CloveNet Soko
-                </p>
+              <div className="flex justify-center">
+                <BrandLogo
+                  title="CloveNet Soko"
+                  subtitle="Vendor Registration"
+                  showSubtitle
+                  iconSize="lg"
+                  textSize="lg"
+                />
               </div>
 
               <h1 className="mt-7 text-2xl font-black leading-tight text-gray-950">

@@ -1,19 +1,31 @@
 import { useEffect, useState } from "react"
-import { Download, X } from "lucide-react"
+import { ArrowRight, Download, Share, X } from "lucide-react"
 
 const INSTALL_DISMISSED_KEY = "clovenet_soko_install_dismissed"
+
+function isIOSDevice() {
+  return /iPad|iPhone|iPod/.test(window.navigator.userAgent) && !window.MSStream
+}
+
+function isSafariBrowser() {
+  return /^((?!chrome|android).)*safari/i.test(window.navigator.userAgent)
+}
+
+function isStandaloneMode() {
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.navigator.standalone === true
+  )
+}
 
 function InstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState(null)
   const [isVisible, setIsVisible] = useState(false)
   const [isInstalled, setIsInstalled] = useState(false)
+  const [showIOSGuide, setShowIOSGuide] = useState(false)
 
   useEffect(() => {
-    const isStandalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      window.navigator.standalone === true
-
-    if (isStandalone) {
+    if (isStandaloneMode()) {
       setIsInstalled(true)
       return
     }
@@ -24,10 +36,24 @@ function InstallPrompt() {
       return
     }
 
+    const isIOSSafari = isIOSDevice() && isSafariBrowser()
+
+    if (isIOSSafari) {
+      const timer = window.setTimeout(() => {
+        setShowIOSGuide(true)
+        setIsVisible(true)
+      }, 5000)
+
+      return () => window.clearTimeout(timer)
+    }
+
     function handleBeforeInstallPrompt(event) {
       event.preventDefault()
       setDeferredPrompt(event)
-      setIsVisible(true)
+
+      window.setTimeout(() => {
+        setIsVisible(true)
+      }, 4000)
     }
 
     function handleAppInstalled() {
@@ -56,9 +82,9 @@ function InstallPrompt() {
 
     deferredPrompt.prompt()
 
-    const choiceResult = await deferredPrompt.userChoice
+    const { outcome } = await deferredPrompt.userChoice
 
-    if (choiceResult.outcome === "accepted") {
+    if (outcome === "accepted") {
       localStorage.setItem(INSTALL_DISMISSED_KEY, "true")
     }
 
@@ -69,14 +95,94 @@ function InstallPrompt() {
   function handleDismiss() {
     localStorage.setItem(INSTALL_DISMISSED_KEY, "true")
     setIsVisible(false)
+    setShowIOSGuide(false)
   }
 
-  if (!isVisible || isInstalled || !deferredPrompt) {
+  if (!isVisible || isInstalled) {
     return null
   }
 
+  if (!showIOSGuide && !deferredPrompt) {
+    return null
+  }
+
+  if (showIOSGuide) {
+    return (
+      <div className="fixed bottom-24 left-4 right-4 z-50 mx-auto max-w-md rounded-[1.5rem] border border-[var(--color-border)] bg-white p-4 shadow-2xl md:hidden">
+        <button
+          type="button"
+          onClick={handleDismiss}
+          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-bg)] text-gray-500 transition hover:text-gray-900"
+          aria-label="Funga"
+        >
+          <X size={16} strokeWidth={2.7} />
+        </button>
+
+        <div className="pr-8">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-navy)] text-white">
+              <Download size={20} strokeWidth={2.7} />
+            </div>
+
+            <div>
+              <h3 className="text-sm font-black text-gray-950">
+                Install CloveNet Soko
+              </h3>
+
+              <p className="mt-1 text-xs font-semibold leading-5 text-[var(--color-muted)]">
+                Weka app kwenye home screen kwa access ya haraka.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 space-y-2.5">
+            <div className="flex items-center gap-3 rounded-2xl bg-[var(--color-bg)] px-3 py-2.5">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-navy)] text-xs font-black text-white">
+                1
+              </div>
+
+              <Share
+                size={16}
+                strokeWidth={2.7}
+                className="shrink-0 text-[var(--color-green-dark)]"
+              />
+
+              <p className="text-xs font-semibold leading-5 text-gray-700">
+                Bonyeza kitufe cha Share kwenye Safari.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 rounded-2xl bg-[var(--color-bg)] px-3 py-2.5">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-navy)] text-xs font-black text-white">
+                2
+              </div>
+
+              <ArrowRight
+                size={16}
+                strokeWidth={2.7}
+                className="shrink-0 text-[var(--color-green-dark)]"
+              />
+
+              <p className="text-xs font-semibold leading-5 text-gray-700">
+                Chagua Add to Home Screen, kisha bonyeza Add.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleDismiss}
+            className="mt-4 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] py-2.5 text-xs font-black text-gray-600 transition hover:bg-white"
+          >
+            Sawa, Nimeelewa
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="fixed bottom-24 left-4 right-4 z-50 mx-auto max-w-md rounded-[1.5rem] border border-[var(--color-border)] bg-white p-4 shadow-2xl md:bottom-6">
+    <div className="fixed bottom-24 left-4 right-4 z-50 mx-auto max-w-md rounded-[1.5rem] border border-[var(--color-border)] bg-white p-4 shadow-2xl md:hidden">
       <button
         type="button"
         onClick={handleDismiss}

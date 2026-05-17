@@ -3,9 +3,10 @@ import {
   HelpCircle,
   MessageCircle,
   ShieldCheck,
-  ShoppingBag,
   Store,
 } from "lucide-react"
+
+import BrandLogo from "../brand/BrandLogo"
 
 function Footer() {
   const navigate = useNavigate()
@@ -14,25 +15,14 @@ function Footer() {
     <footer className="mt-8 bg-[var(--color-navy)] text-white">
       <div className="mx-auto grid max-w-7xl gap-8 px-5 py-10 sm:grid-cols-2 md:px-6 lg:grid-cols-4">
         <div>
-          <button
-            type="button"
+          <BrandLogo
+            light
+            showSubtitle
+            iconSize="md"
+            textSize="lg"
+            subtitle="WhatsApp-first marketplace"
             onClick={() => navigate("/")}
-            className="flex items-center gap-3 text-left"
-          >
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--color-green)] text-[var(--color-navy)]">
-              <ShoppingBag size={23} strokeWidth={2.7} />
-            </div>
-
-            <div>
-              <h3 className="text-xl font-black leading-tight">
-                CloveNet Soko
-              </h3>
-
-              <p className="text-xs font-semibold text-slate-400">
-                WhatsApp-first marketplace
-              </p>
-            </div>
-          </button>
+          />
 
           <p className="mt-5 max-w-xs text-sm font-medium leading-7 text-slate-400">
             Nunua, uza na simamia bidhaa zako kupitia marketplace rahisi kwa

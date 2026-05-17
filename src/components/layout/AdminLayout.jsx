@@ -1,12 +1,12 @@
 import { Outlet, useLocation, useNavigate } from "react-router-dom"
 import {
   BarChart3,
-  LockKeyhole,
   LogOut,
   Package,
-  Store,
   UsersRound,
 } from "lucide-react"
+
+import BrandLogo from "../brand/BrandLogo"
 
 const adminNavItems = [
   {
@@ -43,26 +43,14 @@ function AdminLayout() {
     <main className="min-h-screen bg-[var(--color-bg)] pb-24 text-[var(--color-text)] md:pb-0">
       <header className="sticky top-0 z-30 border-b border-[var(--color-border)] bg-white/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 md:px-6">
-          <button
-            type="button"
+          <BrandLogo
+            title="CloveNet Soko"
+            subtitle="Admin Dashboard"
+            showSubtitle
+            iconSize="md"
+            textSize="sm"
             onClick={() => navigate("/admin/dashboard")}
-            className="flex min-w-0 items-center gap-3 rounded-2xl text-left outline-none transition focus-visible:ring-2 focus-visible:ring-[var(--color-green)] focus-visible:ring-offset-2"
-            aria-label="Nenda Admin Dashboard"
-          >
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-navy)] text-white shadow-sm">
-              <LockKeyhole size={22} strokeWidth={2.7} />
-            </div>
-
-            <div className="min-w-0">
-              <h1 className="truncate text-sm font-black leading-tight text-gray-950">
-                CloveNet Soko Admin
-              </h1>
-
-              <p className="truncate text-[10px] font-semibold text-[var(--color-muted)]">
-                Private dashboard
-              </p>
-            </div>
-          </button>
+          />
 
           <nav className="hidden items-center gap-2 md:flex">
             {adminNavItems.map((item) => {

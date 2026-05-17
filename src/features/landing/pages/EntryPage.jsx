@@ -19,7 +19,11 @@ import {
   Plug,
   MapPin,
   CheckCheck,
+  BadgeCheck,
+  Sparkles,
 } from "lucide-react"
+
+import BrandLogo from "../../../components/brand/BrandLogo"
 
 const categories = [
   { name: "Laptop", icon: Laptop },
@@ -84,6 +88,29 @@ const steps = [
   },
 ]
 
+const whyItems = [
+  {
+    title: "WhatsApp-first",
+    desc: "Order ya mteja inaandaliwa moja kwa moja na kumpeleka WhatsApp kwa vendor.",
+    icon: MessageCircle,
+  },
+  {
+    title: "Rahisi kwa vendor",
+    desc: "Vendor anaweza kufungua mini-store, kuweka bidhaa na kuanza kupokea wateja.",
+    icon: Store,
+  },
+  {
+    title: "Imejengwa kwa matumizi ya simu",
+    desc: "Muonekano na flow vimezingatia wateja wanaotumia simu zaidi kwenye biashara za kila siku.",
+    icon: Smartphone,
+  },
+  {
+    title: "Verification ya maduka",
+    desc: "Maduka yanapitiwa na admin ili kuongeza uaminifu kati ya vendor na mteja.",
+    icon: ShieldCheck,
+  },
+]
+
 const stats = [
   { value: "Pilot", label: "Hatua ya mwanzo" },
   { value: "0", label: "Maduka yaliyoongezwa" },
@@ -103,6 +130,16 @@ const mobileMenuItems = [
     icon: ShoppingBag,
   },
   {
+    label: "Why Us",
+    sectionId: "why-clovenet",
+    icon: Sparkles,
+  },
+  {
+    label: "Support / Msaada",
+    path: "/support",
+    icon: HelpCircle,
+  },
+  {
     label: "Login / Ingia",
     path: "/vendor/login",
     icon: UserRound,
@@ -111,11 +148,6 @@ const mobileMenuItems = [
     label: "Signup / Fungua Duka",
     path: "/vendor/register",
     icon: UserPlus,
-  },
-  {
-    label: "Support / Msaada",
-    path: "/support",
-    icon: HelpCircle,
   },
 ]
 
@@ -135,6 +167,21 @@ function EntryPage() {
     closeMobilePanels()
   }
 
+  function scrollToSection(sectionId) {
+    closeMobilePanels()
+
+    window.setTimeout(() => {
+      const section = document.getElementById(sectionId)
+
+      if (section) {
+        section.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        })
+      }
+    }, 80)
+  }
+
   function handleSearchSubmit(event) {
     event.preventDefault()
 
@@ -151,22 +198,12 @@ function EntryPage() {
       <header className="sticky top-0 z-30 border-b border-[var(--color-border)] bg-[var(--color-bg)]/95 backdrop-blur">
         <div className="mx-auto max-w-7xl px-4 py-3 md:px-6">
           <div className="flex items-center justify-between gap-3">
-            <button
-              type="button"
+            <BrandLogo
+              title="CloveNet Soko"
+              iconSize="md"
+              textSize="md"
               onClick={() => goTo("/")}
-              className="flex min-w-0 items-center gap-3 rounded-2xl text-left outline-none transition focus-visible:ring-2 focus-visible:ring-[var(--color-green)] focus-visible:ring-offset-2"
-              aria-label="Nenda ukurasa wa mwanzo"
-            >
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-navy)] text-white shadow-sm">
-                <Store size={22} strokeWidth={2.6} />
-              </div>
-
-              <div className="min-w-0">
-                <p className="truncate text-base font-black leading-tight tracking-tight md:text-lg">
-                  CloveNet Soko
-                </p>
-              </div>
-            </button>
+            />
 
             <form
               onSubmit={handleSearchSubmit}
@@ -196,6 +233,14 @@ function EntryPage() {
                 className="rounded-2xl px-4 py-2.5 text-sm font-bold text-gray-600 transition hover:bg-white hover:text-[var(--color-navy)]"
               >
                 Browse
+              </button>
+
+              <button
+                type="button"
+                onClick={() => scrollToSection("why-clovenet")}
+                className="rounded-2xl px-4 py-2.5 text-sm font-bold text-gray-600 transition hover:bg-white hover:text-[var(--color-navy)]"
+              >
+                Why Us?
               </button>
 
               <button
@@ -298,9 +343,13 @@ function EntryPage() {
 
                 return (
                   <button
-                    key={item.path}
+                    key={item.path || item.sectionId}
                     type="button"
-                    onClick={() => goTo(item.path)}
+                    onClick={() =>
+                      item.sectionId
+                        ? scrollToSection(item.sectionId)
+                        : goTo(item.path)
+                    }
                     className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-black text-gray-700 transition hover:bg-[var(--color-green-soft)] hover:text-[var(--color-green-dark)]"
                   >
                     <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-bg)] text-[var(--color-navy)]">
@@ -458,6 +507,63 @@ function EntryPage() {
               Zote
               <ArrowRight size={16} strokeWidth={2.5} />
             </button>
+          </div>
+        </section>
+
+        <section
+          id="why-clovenet"
+          className="scroll-mt-24 mt-5 rounded-[2rem] border border-[var(--color-border)] bg-[var(--color-card)] p-5 shadow-sm md:p-6"
+        >
+          <div className="grid gap-5 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
+            <div>
+              <span className="inline-flex items-center gap-2 rounded-full bg-[var(--color-green-soft)] px-3 py-1 text-[11px] font-black text-[var(--color-green-dark)]">
+                <Sparkles size={13} strokeWidth={2.7} />
+                Why CloveNet Soko?
+              </span>
+
+              <h2 className="mt-4 text-2xl font-black leading-tight text-gray-950 md:text-3xl">
+                Marketplace rahisi kwa biashara zinazotumia WhatsApp.
+              </h2>
+
+              <p className="mt-3 text-sm font-semibold leading-6 text-[var(--color-muted)]">
+                CloveNet Soko inalenga kurahisisha biashara za kawaida kuonekana
+                online bila kufanya mchakato uwe mgumu kwa vendor au mteja.
+              </p>
+
+              <button
+                type="button"
+                onClick={() => goTo("/vendor/register")}
+                className="mt-5 inline-flex items-center justify-center gap-2 rounded-2xl bg-[var(--color-navy)] px-5 py-3 text-sm font-black text-white transition hover:bg-[var(--color-green-dark)]"
+              >
+                Fungua Duka Lako
+                <ArrowRight size={17} strokeWidth={2.7} />
+              </button>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              {whyItems.map((item) => {
+                const Icon = item.icon
+
+                return (
+                  <div
+                    key={item.title}
+                    className="rounded-[1.5rem] border border-[var(--color-border)] bg-[var(--color-bg)] p-4"
+                  >
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-[var(--color-navy)] shadow-sm">
+                      <Icon size={21} strokeWidth={2.6} />
+                    </div>
+
+                    <h3 className="mt-3 text-sm font-black text-gray-950">
+                      {item.title}
+                    </h3>
+
+                    <p className="mt-2 text-xs font-semibold leading-5 text-[var(--color-muted)]">
+                      {item.desc}
+                    </p>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         </section>
 

@@ -5,6 +5,8 @@ import {
   ArrowRight,
   BadgeCheck,
   Check,
+  ChevronLeft,
+  ChevronRight,
   MapPin,
   MessageCircle,
   Package,
@@ -21,11 +23,26 @@ import MobileBottomNav from "../../../components/layout/MobileBottomNav"
 import { formatMoney } from "../../../utils/formatters"
 import { openSingleProductWhatsAppOrder } from "../../../utils/whatsapp"
 
+function getProductImages(product) {
+  if (!product) return []
+
+  if (Array.isArray(product.images) && product.images.length > 0) {
+    return product.images.filter(Boolean)
+  }
+
+  if (product.image) {
+    return [product.image]
+  }
+
+  return []
+}
+
 function ProductDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const hasTrackedView = useRef(false)
   const [added, setAdded] = useState(false)
+  const [activeImageIndex, setActiveImageIndex] = useState(0)
 
   const product = useMemo(() => {
     const products = StorageService.getProducts()
@@ -43,6 +60,13 @@ function ProductDetailPage() {
       ...foundProduct,
       vendor,
     }
+  }, [id])
+
+  const productImages = useMemo(() => getProductImages(product), [product])
+  const activeImage = productImages[activeImageIndex] || ""
+
+  useEffect(() => {
+    setActiveImageIndex(0)
   }, [id])
 
   useEffect(() => {
@@ -80,6 +104,22 @@ function ProductDetailPage() {
     navigate(`/store/${product.vendor.id}`)
   }
 
+  function goToPreviousImage() {
+    if (productImages.length <= 1) return
+
+    setActiveImageIndex((current) =>
+      current === 0 ? productImages.length - 1 : current - 1
+    )
+  }
+
+  function goToNextImage() {
+    if (productImages.length <= 1) return
+
+    setActiveImageIndex((current) =>
+      current === productImages.length - 1 ? 0 : current + 1
+    )
+  }
+
   if (!product) {
     return (
       <section className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)]">
@@ -90,16 +130,14 @@ function ProductDetailPage() {
               title="Bidhaa haijapatikana"
               description="Bidhaa unayotafuta haipo au imeondolewa kwenye soko."
             >
-              <div className="mt-6 flex justify-center">
-                <button
-                  type="button"
-                  onClick={() => navigate("/soko")}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[var(--color-green)] px-5 py-3 text-sm font-black text-[var(--color-navy)] transition hover:bg-[var(--color-green-dark)] hover:text-white"
-                >
-                  Rudi Sokoni
-                  <ArrowRight size={16} strokeWidth={2.7} />
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => navigate("/soko")}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[var(--color-green)] px-5 py-3 text-sm font-black text-[var(--color-navy)] transition hover:bg-[var(--color-green-dark)] hover:text-white"
+              >
+                Rudi Sokoni
+                <ArrowRight size={16} strokeWidth={2.7} />
+              </button>
             </EmptyState>
           </div>
         </main>
@@ -110,6 +148,7 @@ function ProductDetailPage() {
   }
 
   const hasDiscount = Number(product.oldPrice) > Number(product.price)
+  const hasMultipleImages = productImages.length > 1
 
   return (
     <section className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)]">
@@ -152,11 +191,10 @@ function ProductDetailPage() {
         <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
           <div className="overflow-hidden rounded-[2rem] border border-[var(--color-border)] bg-white shadow-sm">
             <div className="relative flex aspect-square items-center justify-center bg-[var(--color-bg)] md:aspect-[4/3]">
-              {product.image ? (
+              {activeImage ? (
                 <img
-                  src={product.image}
+                  src={activeImage}
                   alt={product.name || "Bidhaa"}
-                  loading="lazy"
                   className="h-full w-full object-cover"
                 />
               ) : (
@@ -183,7 +221,75 @@ function ProductDetailPage() {
                   Offer
                 </span>
               )}
+
+              {hasMultipleImages && (
+                <>
+                  <button
+                    type="button"
+                    onClick={goToPreviousImage}
+                    className="absolute left-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[var(--color-navy)] shadow-sm backdrop-blur transition hover:bg-white"
+                    aria-label="Picha iliyopita"
+                  >
+                    <ChevronLeft size={22} strokeWidth={2.8} />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={goToNextImage}
+                    className="absolute right-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[var(--color-navy)] shadow-sm backdrop-blur transition hover:bg-white"
+                    aria-label="Picha inayofuata"
+                  >
+                    <ChevronRight size={22} strokeWidth={2.8} />
+                  </button>
+
+                  <span className="absolute bottom-4 left-4 rounded-full bg-black/65 px-3 py-1 text-[10px] font-black text-white shadow-sm">
+                    {activeImageIndex + 1}/{productImages.length}
+                  </span>
+                </>
+              )}
             </div>
+
+            {hasMultipleImages && (
+              <div className="border-t border-[var(--color-border)] bg-white p-4">
+                <div className="mb-3 flex items-center justify-center gap-1.5">
+                  {productImages.map((image, index) => (
+                    <button
+                      key={`${image.slice(0, 18)}-${index}`}
+                      type="button"
+                      onClick={() => setActiveImageIndex(index)}
+                      className={`h-2 rounded-full transition-all ${
+                        activeImageIndex === index
+                          ? "w-6 bg-[var(--color-green)]"
+                          : "w-2 bg-gray-300 hover:bg-gray-400"
+                      }`}
+                      aria-label={`Fungua picha ${index + 1}`}
+                    />
+                  ))}
+                </div>
+
+                <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
+                  {productImages.map((image, index) => (
+                    <button
+                      key={`${image.slice(0, 24)}-${index}`}
+                      type="button"
+                      onClick={() => setActiveImageIndex(index)}
+                      className={`h-16 w-16 shrink-0 overflow-hidden rounded-2xl border bg-[var(--color-bg)] transition ${
+                        activeImageIndex === index
+                          ? "border-[var(--color-green)] ring-2 ring-[var(--color-green)]/25"
+                          : "border-[var(--color-border)] hover:border-[var(--color-green)]"
+                      }`}
+                      aria-label={`Chagua picha ${index + 1}`}
+                    >
+                      <img
+                        src={image}
+                        alt={`${product.name || "Bidhaa"} ${index + 1}`}
+                        className="h-full w-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="rounded-[2rem] border border-[var(--color-border)] bg-white p-5 shadow-sm md:p-7">
@@ -196,6 +302,12 @@ function ProductDetailPage() {
                 <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-yellow)] px-3 py-1 text-[10px] font-black text-[var(--color-navy)]">
                   <BadgeCheck size={12} strokeWidth={2.7} />
                   Featured
+                </span>
+              )}
+
+              {hasMultipleImages && (
+                <span className="rounded-full bg-[var(--color-bg)] px-3 py-1 text-[10px] font-black text-gray-500">
+                  Picha {productImages.length}
                 </span>
               )}
             </div>

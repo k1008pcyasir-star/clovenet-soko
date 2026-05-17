@@ -4,6 +4,7 @@ import {
   ArrowRight,
   BadgeCheck,
   Eye,
+  Images,
   MessageCircle,
   Package,
   Search,
@@ -16,6 +17,20 @@ import {
 
 import { StorageService } from "../../../services/storageService"
 import { formatDate, formatMoney } from "../../../utils/formatters"
+
+function getProductImages(product) {
+  if (!product) return []
+
+  if (Array.isArray(product.images) && product.images.length > 0) {
+    return product.images.filter(Boolean)
+  }
+
+  if (product.image) {
+    return [product.image]
+  }
+
+  return []
+}
 
 function AdminProductsPage() {
   const navigate = useNavigate()
@@ -246,106 +261,127 @@ function AdminProductsPage() {
             </div>
           ) : (
             <div className="divide-y divide-[var(--color-border)]">
-              {filteredProducts.map((product) => (
-                <article key={product.id} className="p-5">
-                  <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
-                    <div className="flex gap-4">
-                      <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[var(--color-bg)] text-[var(--color-navy)]">
-                        {product.image ? (
-                          <img
-                            src={product.image}
-                            alt={product.name || "Bidhaa"}
-                            loading="lazy"
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <Package size={34} strokeWidth={2.3} />
-                        )}
-                      </div>
+              {filteredProducts.map((product) => {
+                const productImages = getProductImages(product)
+                const mainImage = productImages[0] || ""
+                const hasMultipleImages = productImages.length > 1
 
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="line-clamp-1 text-sm font-black text-gray-950">
-                            {product.name || "Bidhaa bila jina"}
-                          </h3>
+                return (
+                  <article key={product.id} className="p-5">
+                    <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
+                      <div className="flex gap-4">
+                        <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[var(--color-bg)] text-[var(--color-navy)]">
+                          {mainImage ? (
+                            <img
+                              src={mainImage}
+                              alt={product.name || "Bidhaa"}
+                              loading="lazy"
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <Package size={34} strokeWidth={2.3} />
+                          )}
 
-                          {product.featured && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-yellow)] px-2.5 py-1 text-[10px] font-black text-[var(--color-navy)]">
-                              <BadgeCheck size={12} strokeWidth={2.8} />
-                              Featured
+                          {hasMultipleImages && (
+                            <span className="absolute bottom-1 right-1 inline-flex items-center gap-1 rounded-full bg-black/65 px-2 py-0.5 text-[9px] font-black text-white">
+                              <Images size={10} strokeWidth={2.7} />
+                              {productImages.length}
                             </span>
                           )}
                         </div>
 
-                        <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs font-semibold text-[var(--color-muted)]">
-                          <span>{product.category || "Bidhaa"}</span>
-                          <span>·</span>
-                          <span className="inline-flex items-center gap-1">
-                            <Store size={13} strokeWidth={2.5} />
-                            {product.vendor?.storeName || "Vendor haijapatikana"}
-                          </span>
-                        </p>
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="line-clamp-1 text-sm font-black text-gray-950">
+                              {product.name || "Bidhaa bila jina"}
+                            </h3>
 
-                        <p className="mt-2 line-clamp-2 text-xs font-semibold leading-5 text-[var(--color-muted)]">
-                          {product.specs ||
-                            product.description ||
-                            "Maelezo hayajawekwa."}
-                        </p>
+                            {product.featured && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-yellow)] px-2.5 py-1 text-[10px] font-black text-[var(--color-navy)]">
+                                <BadgeCheck size={12} strokeWidth={2.8} />
+                                Featured
+                              </span>
+                            )}
 
-                        <div className="mt-3 flex flex-wrap gap-3 text-xs font-semibold text-gray-600">
-                          <span>
-                            Bei:{" "}
-                            <strong className="text-gray-950">
-                              {formatMoney(product.price)}
-                            </strong>
-                          </span>
+                            {hasMultipleImages && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-bg)] px-2.5 py-1 text-[10px] font-black text-gray-500">
+                                <Images size={12} strokeWidth={2.6} />
+                                Picha {productImages.length}
+                              </span>
+                            )}
+                          </div>
 
-                          <span>
-                            Views:{" "}
-                            <strong className="text-gray-950">
-                              {product.views || 0}
-                            </strong>
-                          </span>
+                          <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs font-semibold text-[var(--color-muted)]">
+                            <span>{product.category || "Bidhaa"}</span>
+                            <span>·</span>
+                            <span className="inline-flex items-center gap-1">
+                              <Store size={13} strokeWidth={2.5} />
+                              {product.vendor?.storeName ||
+                                "Vendor haijapatikana"}
+                            </span>
+                          </p>
 
-                          <span>
-                            Clicks:{" "}
-                            <strong className="text-gray-950">
-                              {product.orderClicks || 0}
-                            </strong>
-                          </span>
+                          <p className="mt-2 line-clamp-2 text-xs font-semibold leading-5 text-[var(--color-muted)]">
+                            {product.specs ||
+                              product.description ||
+                              "Maelezo hayajawekwa."}
+                          </p>
 
-                          <span>
-                            Added:{" "}
-                            <strong className="text-gray-950">
-                              {formatDate(product.createdAt)}
-                            </strong>
-                          </span>
+                          <div className="mt-3 flex flex-wrap gap-3 text-xs font-semibold text-gray-600">
+                            <span>
+                              Bei:{" "}
+                              <strong className="text-gray-950">
+                                {formatMoney(product.price)}
+                              </strong>
+                            </span>
+
+                            <span>
+                              Views:{" "}
+                              <strong className="text-gray-950">
+                                {product.views || 0}
+                              </strong>
+                            </span>
+
+                            <span>
+                              Clicks:{" "}
+                              <strong className="text-gray-950">
+                                {product.orderClicks || 0}
+                              </strong>
+                            </span>
+
+                            <span>
+                              Added:{" "}
+                              <strong className="text-gray-950">
+                                {formatDate(product.createdAt)}
+                              </strong>
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="grid gap-2 sm:grid-cols-2 lg:w-72">
-                      <button
-                        type="button"
-                        onClick={() => navigate(`/product/${product.id}`)}
-                        className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2.5 text-xs font-black text-gray-700 transition hover:bg-white"
-                      >
-                        <Eye size={14} strokeWidth={2.7} />
-                        View
-                      </button>
+                      <div className="grid gap-2 sm:grid-cols-2 lg:w-72">
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/product/${product.id}`)}
+                          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2.5 text-xs font-black text-gray-700 transition hover:bg-white"
+                        >
+                          <Eye size={14} strokeWidth={2.7} />
+                          View
+                        </button>
 
-                      <button
-                        type="button"
-                        onClick={() => deleteProduct(product.id)}
-                        className="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs font-black text-red-600 transition hover:bg-red-100"
-                      >
-                        <Trash2 size={14} strokeWidth={2.7} />
-                        Delete
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteProduct(product.id)}
+                          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs font-black text-red-600 transition hover:bg-red-100"
+                        >
+                          <Trash2 size={14} strokeWidth={2.7} />
+                          Delete
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                </article>
-              ))}
+                  </article>
+                )
+              })}
             </div>
           )}
         </div>

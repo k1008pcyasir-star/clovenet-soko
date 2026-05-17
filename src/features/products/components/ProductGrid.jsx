@@ -2,6 +2,7 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import {
   Check,
+  Images,
   MessageCircle,
   Package,
   ShoppingCart,
@@ -12,6 +13,20 @@ import {
 import { StorageService } from "../../../services/storageService"
 import { formatMoney } from "../../../utils/formatters"
 import { openSingleProductWhatsAppOrder } from "../../../utils/whatsapp"
+
+function getProductImages(product) {
+  if (!product) return []
+
+  if (Array.isArray(product.images) && product.images.length > 0) {
+    return product.images.filter(Boolean)
+  }
+
+  if (product.image) {
+    return [product.image]
+  }
+
+  return []
+}
 
 function ProductGrid({ products = [] }) {
   const navigate = useNavigate()
@@ -55,6 +70,9 @@ function ProductGrid({ products = [] }) {
       {products.map((product) => {
         const isAdded = addedProductId === product.id
         const hasDiscount = Number(product.oldPrice) > Number(product.price)
+        const productImages = getProductImages(product)
+        const mainImage = productImages[0] || ""
+        const hasMultipleImages = productImages.length > 1
 
         return (
           <article
@@ -68,9 +86,9 @@ function ProductGrid({ products = [] }) {
               aria-label={`Angalia bidhaa: ${product.name}`}
             >
               <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden bg-[var(--color-bg)]">
-                {product.image ? (
+                {mainImage ? (
                   <img
-                    src={product.image}
+                    src={mainImage}
                     alt={product.name || "Bidhaa"}
                     loading="lazy"
                     className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
@@ -93,6 +111,28 @@ function ProductGrid({ products = [] }) {
                     </span>
                   )}
                 </div>
+
+                {hasMultipleImages && (
+                  <>
+                    <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full bg-black/65 px-2.5 py-1 text-[10px] font-black text-white shadow-sm backdrop-blur">
+                      <Images size={12} strokeWidth={2.7} />
+                      1/{productImages.length}
+                    </span>
+
+                    <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1">
+                      {productImages.slice(0, 5).map((image, index) => (
+                        <span
+                          key={`${image.slice(0, 14)}-${index}`}
+                          className={`h-1.5 rounded-full ${
+                            index === 0
+                              ? "w-4 bg-white"
+                              : "w-1.5 bg-white/55"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
 
                 {hasDiscount && (
                   <span className="absolute bottom-3 right-3 rounded-full bg-[var(--color-navy)] px-3 py-1 text-[10px] font-black text-white shadow-sm">

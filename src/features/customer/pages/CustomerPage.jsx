@@ -12,6 +12,7 @@ import {
   ArrowRight,
 } from "lucide-react"
 
+import BrandLogo from "../../../components/brand/BrandLogo"
 import { StorageService } from "../../../services/storageService"
 import MobileBottomNav from "../../../components/layout/MobileBottomNav"
 import ProductGrid from "../../products/components/ProductGrid"
@@ -172,22 +173,12 @@ function CustomerPage() {
       <header className="sticky top-0 z-30 border-b border-[var(--color-border)] bg-[var(--color-bg)]/95 backdrop-blur-md">
         <div className="mx-auto max-w-7xl px-4 py-3 md:px-6">
           <div className="flex items-center justify-between gap-3">
-            <button
-              type="button"
+            <BrandLogo
+              title="CloveNet Soko"
+              iconSize="md"
+              textSize="sm"
               onClick={() => navigate("/")}
-              className="flex min-w-0 items-center gap-3 rounded-2xl text-left outline-none transition focus-visible:ring-2 focus-visible:ring-[var(--color-green)] focus-visible:ring-offset-2"
-              aria-label="Rudi ukurasa wa mwanzo"
-            >
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-navy)] text-white shadow-sm">
-                <Store size={22} strokeWidth={2.6} />
-              </div>
-
-              <div className="min-w-0">
-                <p className="truncate text-sm font-black leading-tight tracking-tight md:text-base">
-                  CloveNet Soko
-                </p>
-              </div>
-            </button>
+            />
 
             <form
               onSubmit={handleSearchSubmit}

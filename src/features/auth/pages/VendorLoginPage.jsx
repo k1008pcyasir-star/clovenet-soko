@@ -8,9 +8,9 @@ import {
   Lock,
   MessageCircle,
   ShieldCheck,
-  Store,
 } from "lucide-react"
 
+import BrandLogo from "../../../components/brand/BrandLogo"
 import { StorageService } from "../../../services/storageService"
 import { normalizePhone } from "../../../utils/formatters"
 
@@ -144,14 +144,12 @@ function VendorLoginPage() {
             className="rounded-[2rem] border border-[var(--color-border)] bg-white p-5 shadow-sm md:p-7"
           >
             <div className="text-center">
-              <div className="flex items-center justify-center gap-3">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-navy)] text-white shadow-sm">
-                  <Store size={24} strokeWidth={2.6} />
-                </div>
-
-                <p className="text-xl font-black leading-tight text-gray-950">
-                  CloveNet Soko
-                </p>
+              <div className="flex justify-center">
+                <BrandLogo
+                  title="CloveNet Soko"
+                  iconSize="lg"
+                  textSize="lg"
+                />
               </div>
 
               <h1 className="mt-7 text-2xl font-black leading-tight text-gray-950">

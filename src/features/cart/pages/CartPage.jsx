@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom"
 import {
   ArrowLeft,
   ArrowRight,
+  Images,
   MessageCircle,
   Minus,
   Package,
@@ -18,6 +19,20 @@ import EmptyState from "../../../components/ui/EmptyState"
 import MobileBottomNav from "../../../components/layout/MobileBottomNav"
 import { formatMoney } from "../../../utils/formatters"
 import { openWhatsAppOrder } from "../../../utils/whatsapp"
+
+function getProductImages(product) {
+  if (!product) return []
+
+  if (Array.isArray(product.images) && product.images.length > 0) {
+    return product.images.filter(Boolean)
+  }
+
+  if (product.image) {
+    return [product.image]
+  }
+
+  return []
+}
 
 function CartPage() {
   const navigate = useNavigate()
@@ -118,7 +133,7 @@ function CartPage() {
               title="Kikapu kiko tupu"
               description="Bidhaa utakazoongeza kutoka sokoni zitaonekana hapa kabla ya kuagiza kupitia WhatsApp."
             >
-              <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+              <div className="flex flex-col justify-center gap-3 sm:flex-row">
                 <button
                   type="button"
                   onClick={() => navigate("/soko")}
@@ -165,8 +180,7 @@ function CartPage() {
               </p>
 
               <p className="truncate text-[10px] font-semibold text-[var(--color-muted)]">
-                {cartItems.length}{" "}
-                {cartItems.length === 1 ? "bidhaa" : "bidhaa"}
+                {cartItems.length} bidhaa
               </p>
             </div>
           </button>
@@ -222,110 +236,125 @@ function CartPage() {
                 </div>
 
                 <div className="divide-y divide-[var(--color-border)]">
-                  {group.items.map((item) => (
-                    <article key={item.productId} className="p-5">
-                      <div className="flex gap-4">
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/product/${item.productId}`)}
-                          className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[var(--color-bg)] text-[var(--color-navy)] outline-none transition focus-visible:ring-2 focus-visible:ring-[var(--color-green)] focus-visible:ring-offset-2"
-                          aria-label={`Fungua ${item.product.name}`}
-                        >
-                          {item.product.image ? (
-                            <img
-                              src={item.product.image}
-                              alt={item.product.name || "Bidhaa"}
-                              loading="lazy"
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <Package size={32} strokeWidth={2.3} />
-                          )}
-                        </button>
+                  {group.items.map((item) => {
+                    const productImages = getProductImages(item.product)
+                    const mainImage = productImages[0] || ""
+                    const hasMultipleImages = productImages.length > 1
 
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                            <div className="min-w-0">
+                    return (
+                      <article key={item.productId} className="p-5">
+                        <div className="flex gap-4">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              navigate(`/product/${item.productId}`)
+                            }
+                            className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[var(--color-bg)] text-[var(--color-navy)] outline-none transition focus-visible:ring-2 focus-visible:ring-[var(--color-green)] focus-visible:ring-offset-2"
+                            aria-label={`Fungua ${item.product.name}`}
+                          >
+                            {mainImage ? (
+                              <img
+                                src={mainImage}
+                                alt={item.product.name || "Bidhaa"}
+                                loading="lazy"
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <Package size={32} strokeWidth={2.3} />
+                            )}
+
+                            {hasMultipleImages && (
+                              <span className="absolute bottom-1 right-1 inline-flex items-center gap-1 rounded-full bg-black/65 px-2 py-0.5 text-[9px] font-black text-white">
+                                <Images size={10} strokeWidth={2.7} />
+                                {productImages.length}
+                              </span>
+                            )}
+                          </button>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                              <div className="min-w-0">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    navigate(`/product/${item.productId}`)
+                                  }
+                                  className="block w-full text-left outline-none transition focus-visible:ring-2 focus-visible:ring-[var(--color-green)] focus-visible:ring-offset-2"
+                                >
+                                  <h3 className="line-clamp-2 text-sm font-black text-gray-950 transition hover:text-[var(--color-green-dark)]">
+                                    {item.product.name}
+                                  </h3>
+                                </button>
+
+                                <p className="mt-1 text-xs font-semibold text-[var(--color-muted)]">
+                                  {item.product.category || "Bidhaa"}
+                                </p>
+
+                                <p className="mt-2 line-clamp-2 text-xs font-semibold leading-5 text-[var(--color-muted)]">
+                                  {item.product.specs ||
+                                    item.product.description ||
+                                    "Maelezo hayajawekwa."}
+                                </p>
+                              </div>
+
+                              <div className="shrink-0 text-left sm:text-right">
+                                <p className="text-sm font-black text-[var(--color-navy)]">
+                                  {formatMoney(item.product.price)}
+                                </p>
+
+                                <p className="mt-1 text-xs font-semibold text-[var(--color-muted)]">
+                                  Jumla: {formatMoney(item.lineTotal)}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="mt-4 flex flex-wrap items-center gap-2">
                               <button
                                 type="button"
                                 onClick={() =>
-                                  navigate(`/product/${item.productId}`)
+                                  updateQuantity(
+                                    item.productId,
+                                    item.quantity - 1
+                                  )
                                 }
-                                className="block w-full text-left outline-none transition focus-visible:ring-2 focus-visible:ring-[var(--color-green)] focus-visible:ring-offset-2"
+                                className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--color-border)] bg-white text-gray-700 transition hover:bg-[var(--color-bg)]"
+                                aria-label="Punguza idadi"
                               >
-                                <h3 className="line-clamp-2 text-sm font-black text-gray-950 transition hover:text-[var(--color-green-dark)]">
-                                  {item.product.name}
-                                </h3>
+                                <Minus size={15} strokeWidth={2.8} />
                               </button>
 
-                              <p className="mt-1 text-xs font-semibold text-[var(--color-muted)]">
-                                {item.product.category || "Bidhaa"}
-                              </p>
+                              <span className="flex h-9 min-w-10 items-center justify-center rounded-xl bg-[var(--color-bg)] px-3 text-sm font-black text-gray-950">
+                                {item.quantity}
+                              </span>
 
-                              <p className="mt-2 line-clamp-2 text-xs font-semibold leading-5 text-[var(--color-muted)]">
-                                {item.product.specs ||
-                                  item.product.description ||
-                                  "Maelezo hayajawekwa."}
-                              </p>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  updateQuantity(
+                                    item.productId,
+                                    item.quantity + 1
+                                  )
+                                }
+                                className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--color-border)] bg-white text-gray-700 transition hover:bg-[var(--color-bg)]"
+                                aria-label="Ongeza idadi"
+                              >
+                                <Plus size={15} strokeWidth={2.8} />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => removeItem(item.productId)}
+                                className="ml-auto inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-black text-red-600 transition hover:bg-red-100"
+                              >
+                                <Trash2 size={14} strokeWidth={2.7} />
+                                Ondoa
+                              </button>
                             </div>
-
-                            <div className="shrink-0 text-left sm:text-right">
-                              <p className="text-sm font-black text-[var(--color-navy)]">
-                                {formatMoney(item.product.price)}
-                              </p>
-
-                              <p className="mt-1 text-xs font-semibold text-[var(--color-muted)]">
-                                Jumla: {formatMoney(item.lineTotal)}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="mt-4 flex flex-wrap items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                updateQuantity(
-                                  item.productId,
-                                  item.quantity - 1
-                                )
-                              }
-                              className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--color-border)] bg-white text-gray-700 transition hover:bg-[var(--color-bg)]"
-                              aria-label="Punguza idadi"
-                            >
-                              <Minus size={15} strokeWidth={2.8} />
-                            </button>
-
-                            <span className="flex h-9 min-w-10 items-center justify-center rounded-xl bg-[var(--color-bg)] px-3 text-sm font-black text-gray-950">
-                              {item.quantity}
-                            </span>
-
-                            <button
-                              type="button"
-                              onClick={() =>
-                                updateQuantity(
-                                  item.productId,
-                                  item.quantity + 1
-                                )
-                              }
-                              className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--color-border)] bg-white text-gray-700 transition hover:bg-[var(--color-bg)]"
-                              aria-label="Ongeza idadi"
-                            >
-                              <Plus size={15} strokeWidth={2.8} />
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => removeItem(item.productId)}
-                              className="ml-auto inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-black text-red-600 transition hover:bg-red-100"
-                            >
-                              <Trash2 size={14} strokeWidth={2.7} />
-                              Ondoa
-                            </button>
                           </div>
                         </div>
-                      </div>
-                    </article>
-                  ))}
+                      </article>
+                    )
+                  })}
                 </div>
 
                 <div className="border-t border-[var(--color-border)] bg-[var(--color-bg)] px-5 py-4">
