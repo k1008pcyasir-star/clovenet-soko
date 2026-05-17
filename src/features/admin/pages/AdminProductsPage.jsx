@@ -3,16 +3,20 @@ import { useNavigate } from "react-router-dom"
 import {
   ArrowRight,
   BadgeCheck,
+  CheckCircle2,
+  Clock,
   Eye,
   Images,
   MessageCircle,
   Package,
   Search,
+  ShieldCheck,
   ShoppingBag,
   Store,
   Trash2,
   UsersRound,
   X,
+  XCircle,
 } from "lucide-react"
 
 import { StorageService } from "../../../services/storageService"
@@ -32,9 +36,26 @@ function getProductImages(product) {
   return []
 }
 
+function getVendorStatus(vendor) {
+  if (!vendor) return "unknown"
+
+  if (vendor.status === "verified" || vendor.isVerified) {
+    return "verified"
+  }
+
+  if (vendor.status === "suspended") {
+    return "suspended"
+  }
+
+  return "pending_verification"
+}
+
 function AdminProductsPage() {
   const navigate = useNavigate()
+
   const [query, setQuery] = useState("")
+  const [featureFilter, setFeatureFilter] = useState("all")
+  const [vendorStatusFilter, setVendorStatusFilter] = useState("all")
   const [products, setProducts] = useState(() => StorageService.getProducts())
 
   const vendors = useMemo(() => StorageService.getVendors(), [])
@@ -46,6 +67,7 @@ function AdminProductsPage() {
       return {
         ...product,
         vendor,
+        vendorStatus: getVendorStatus(vendor),
       }
     })
   }, [products, vendors])
@@ -53,22 +75,33 @@ function AdminProductsPage() {
   const filteredProducts = useMemo(() => {
     const searchText = query.trim().toLowerCase()
 
-    if (!searchText) {
-      return productsWithVendors
-    }
-
     return productsWithVendors.filter((product) => {
       const name = product.name?.toLowerCase() || ""
       const category = product.category?.toLowerCase() || ""
       const storeName = product.vendor?.storeName?.toLowerCase() || ""
+      const specs = product.specs?.toLowerCase() || ""
+      const description = product.description?.toLowerCase() || ""
 
-      return (
+      const matchesSearch =
+        !searchText ||
         name.includes(searchText) ||
         category.includes(searchText) ||
-        storeName.includes(searchText)
-      )
+        storeName.includes(searchText) ||
+        specs.includes(searchText) ||
+        description.includes(searchText)
+
+      const matchesFeature =
+        featureFilter === "all" ||
+        (featureFilter === "featured" && product.featured) ||
+        (featureFilter === "normal" && !product.featured)
+
+      const matchesVendorStatus =
+        vendorStatusFilter === "all" ||
+        product.vendorStatus === vendorStatusFilter
+
+      return matchesSearch && matchesFeature && matchesVendorStatus
     })
-  }, [productsWithVendors, query])
+  }, [productsWithVendors, query, featureFilter, vendorStatusFilter])
 
   const stats = useMemo(() => {
     const totalProducts = products.length
@@ -119,20 +152,29 @@ function AdminProductsPage() {
     },
   ]
 
-  function clearSearch() {
+  const hasFilters =
+    query.trim() || featureFilter !== "all" || vendorStatusFilter !== "all"
+
+  function clearFilters() {
     setQuery("")
+    setFeatureFilter("all")
+    setVendorStatusFilter("all")
   }
 
   function deleteProduct(productId) {
+    const product = products.find((item) => item.id === productId)
+
     const confirmDelete = window.confirm(
-      "Una uhakika unataka kufuta bidhaa hii? Hatua hii haiwezi kurudishwa."
+      `Una uhakika unataka kufuta bidhaa "${
+        product?.name || "hii"
+      }"? Hatua hii haiwezi kurudishwa.`
     )
 
     if (!confirmDelete) {
       return
     }
 
-    const updatedProducts = products.filter((product) => product.id !== productId)
+    const updatedProducts = products.filter((item) => item.id !== productId)
 
     setProducts(updatedProducts)
     StorageService.saveProducts(updatedProducts)
@@ -152,7 +194,8 @@ function AdminProductsPage() {
             </h1>
 
             <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-[var(--color-muted)]">
-              Angalia bidhaa zote zilizowekwa na vendors kwenye CloveNet Soko.
+              Angalia, tafuta na simamia bidhaa zote zilizowekwa na vendors
+              kwenye CloveNet Soko.
             </p>
           </div>
 
@@ -204,44 +247,112 @@ function AdminProductsPage() {
           })}
         </div>
 
+        <div className="mt-6 rounded-[2rem] border border-[var(--color-border)] bg-white p-4 shadow-sm">
+          <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
+            <div className="flex items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 transition focus-within:border-[var(--color-green)] focus-within:ring-2 focus-within:ring-[var(--color-green)]/20">
+              <Search
+                size={17}
+                strokeWidth={2.6}
+                className="shrink-0 text-gray-400"
+              />
+
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Tafuta bidhaa, category, duka, specs au maelezo..."
+                className="w-full bg-transparent text-sm font-semibold text-gray-700 outline-none placeholder:text-gray-400"
+              />
+
+              {query.trim() && (
+                <button
+                  type="button"
+                  onClick={() => setQuery("")}
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-white text-gray-500 transition hover:text-gray-800"
+                  aria-label="Futa utafutaji"
+                >
+                  <X size={14} strokeWidth={2.7} />
+                </button>
+              )}
+            </div>
+
+            <div className="flex gap-2 overflow-x-auto">
+              {[
+                { label: "All", value: "all" },
+                { label: "Featured", value: "featured" },
+                { label: "Normal", value: "normal" },
+              ].map((item) => (
+                <button
+                  key={item.value}
+                  type="button"
+                  onClick={() => setFeatureFilter(item.value)}
+                  className={`shrink-0 rounded-2xl px-4 py-2.5 text-xs font-black transition ${
+                    featureFilter === item.value
+                      ? "bg-[var(--color-navy)] text-white"
+                      : "border border-[var(--color-border)] bg-[var(--color-bg)] text-gray-700 hover:bg-white"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+
+              {[
+                { label: "Vendors: All", value: "all" },
+                { label: "Verified", value: "verified" },
+                { label: "Pending", value: "pending_verification" },
+                { label: "Suspended", value: "suspended" },
+                { label: "Unknown", value: "unknown" },
+              ].map((item) => (
+                <button
+                  key={item.value}
+                  type="button"
+                  onClick={() => setVendorStatusFilter(item.value)}
+                  className={`shrink-0 rounded-2xl px-4 py-2.5 text-xs font-black transition ${
+                    vendorStatusFilter === item.value
+                      ? "bg-[var(--color-green)] text-[var(--color-navy)]"
+                      : "border border-[var(--color-border)] bg-[var(--color-bg)] text-gray-700 hover:bg-white"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+
+              {hasFilters && (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="shrink-0 rounded-2xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs font-black text-red-600"
+                >
+                  Futa Filter
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
         <div className="mt-6 overflow-hidden rounded-[2rem] border border-[var(--color-border)] bg-white shadow-sm">
           <div className="border-b border-[var(--color-border)] p-5">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-sm font-black text-gray-950">
                   Product List
                 </h2>
 
                 <p className="mt-1 text-xs font-semibold text-[var(--color-muted)]">
-                  Jumla inayoonekana: {filteredProducts.length}
+                  Inaonyesha bidhaa {filteredProducts.length} kati ya{" "}
+                  {products.length}
                 </p>
               </div>
 
-              <div className="flex w-full items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2.5 transition focus-within:border-[var(--color-green)] focus-within:ring-2 focus-within:ring-[var(--color-green)]/20 md:max-w-sm">
-                <Search
-                  size={17}
-                  strokeWidth={2.6}
-                  className="shrink-0 text-gray-400"
-                />
-
-                <input
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Tafuta bidhaa, category au duka..."
-                  className="w-full bg-transparent text-sm font-semibold text-gray-700 outline-none placeholder:text-gray-400"
-                />
-
-                {query.trim() && (
-                  <button
-                    type="button"
-                    onClick={clearSearch}
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-white text-gray-500 transition hover:text-gray-800"
-                    aria-label="Futa utafutaji"
-                  >
-                    <X size={14} strokeWidth={2.7} />
-                  </button>
-                )}
-              </div>
+              {hasFilters && (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2.5 text-xs font-black text-gray-700 transition hover:bg-white"
+                >
+                  <X size={14} strokeWidth={2.7} />
+                  Clear
+                </button>
+              )}
             </div>
           </div>
 
@@ -252,12 +363,27 @@ function AdminProductsPage() {
               </div>
 
               <h3 className="mt-4 text-lg font-black text-gray-950">
-                Hakuna bidhaa
+                {products.length === 0
+                  ? "Hakuna bidhaa bado"
+                  : "Hakuna bidhaa iliyopatikana"}
               </h3>
 
               <p className="mx-auto mt-2 max-w-md text-sm font-semibold leading-6 text-[var(--color-muted)]">
-                Bidhaa zitakazowekwa na vendors zitaonekana hapa.
+                {products.length === 0
+                  ? "Bidhaa zitakazowekwa na vendors zitaonekana hapa."
+                  : "Jaribu kubadilisha search au filter ulizoweka."}
               </p>
+
+              {hasFilters && (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="mt-5 inline-flex items-center justify-center gap-2 rounded-2xl bg-[var(--color-green)] px-5 py-3 text-sm font-black text-[var(--color-navy)] transition hover:bg-[var(--color-green-dark)] hover:text-white"
+                >
+                  Futa Filters
+                  <ArrowRight size={16} strokeWidth={2.7} />
+                </button>
+              )}
             </div>
           ) : (
             <div className="divide-y divide-[var(--color-border)]">
@@ -265,6 +391,10 @@ function AdminProductsPage() {
                 const productImages = getProductImages(product)
                 const mainImage = productImages[0] || ""
                 const hasMultipleImages = productImages.length > 1
+                const vendorStatus = product.vendorStatus
+                const vendorIsVerified = vendorStatus === "verified"
+                const vendorIsSuspended = vendorStatus === "suspended"
+                const vendorIsPending = vendorStatus === "pending_verification"
 
                 return (
                   <article key={product.id} className="p-5">
@@ -300,6 +430,27 @@ function AdminProductsPage() {
                               <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-yellow)] px-2.5 py-1 text-[10px] font-black text-[var(--color-navy)]">
                                 <BadgeCheck size={12} strokeWidth={2.8} />
                                 Featured
+                              </span>
+                            )}
+
+                            {vendorIsVerified && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-green-soft)] px-2.5 py-1 text-[10px] font-black text-[var(--color-green-dark)]">
+                                <CheckCircle2 size={12} strokeWidth={2.8} />
+                                Vendor Verified
+                              </span>
+                            )}
+
+                            {vendorIsPending && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-black text-amber-700">
+                                <Clock size={12} strokeWidth={2.8} />
+                                Vendor Pending
+                              </span>
+                            )}
+
+                            {vendorIsSuspended && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-[10px] font-black text-red-600">
+                                <XCircle size={12} strokeWidth={2.8} />
+                                Vendor Suspended
                               </span>
                             )}
 
