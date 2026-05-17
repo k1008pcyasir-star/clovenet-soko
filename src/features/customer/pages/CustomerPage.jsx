@@ -109,6 +109,31 @@ function CustomerPage() {
     (vendor) => vendor.id === selectedVendorId
   )
 
+  function forceAutoScroll(callback) {
+    const html = document.documentElement
+    const body = document.body
+
+    const previousHtmlBehavior = html.style.scrollBehavior
+    const previousBodyBehavior = body.style.scrollBehavior
+
+    html.style.scrollBehavior = "auto"
+    body.style.scrollBehavior = "auto"
+
+    callback()
+
+    html.style.scrollBehavior = previousHtmlBehavior
+    body.style.scrollBehavior = previousBodyBehavior
+  }
+
+  function scrollToProductsInstantly() {
+    forceAutoScroll(() => {
+      document.getElementById("products-section")?.scrollIntoView({
+        behavior: "auto",
+        block: "start",
+      })
+    })
+  }
+
   function updateParams(nextQuery, nextCategory = selectedCategory) {
     const params = {}
 
@@ -331,9 +356,7 @@ function CustomerPage() {
                 ) : (
                   <>
                     Duka lako la{" "}
-                    <span className="text-[var(--color-green)]">
-                      WhatsApp
-                    </span>{" "}
+                    <span className="text-[var(--color-green)]">WhatsApp</span>{" "}
                     sasa lipo online.
                   </>
                 )}
@@ -349,11 +372,7 @@ function CustomerPage() {
                 {hasMarketplaceProducts ? (
                   <button
                     type="button"
-                    onClick={() =>
-                      document
-                        .getElementById("products-section")
-                        ?.scrollIntoView({ behavior: "smooth" })
-                    }
+                    onClick={scrollToProductsInstantly}
                     className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[var(--color-green)] px-6 py-3 text-sm font-black text-[var(--color-navy)] shadow-lg shadow-green-900/20 transition hover:bg-[var(--color-green-dark)] hover:text-white"
                   >
                     Angalia Bidhaa
@@ -372,7 +391,7 @@ function CustomerPage() {
 
                 <button
                   type="button"
-                  onClick={() => navigate("/")}
+                  onClick={() => navigate("/#why-us")}
                   className="rounded-2xl border border-white/15 bg-white/10 px-6 py-3 text-sm font-black text-white backdrop-blur transition hover:bg-white/15"
                 >
                   Jinsi inavyofanya kazi
@@ -719,7 +738,7 @@ function CustomerPage() {
         </div>
       </main>
 
-      <MobileBottomNav active="home" />
+      <MobileBottomNav active="soko" />
     </section>
   )
 }

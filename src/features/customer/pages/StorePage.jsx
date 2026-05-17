@@ -17,6 +17,24 @@ import EmptyState from "../../../components/ui/EmptyState"
 import MobileBottomNav from "../../../components/layout/MobileBottomNav"
 import ProductGrid from "../../products/components/ProductGrid"
 
+function getWhatsAppLink(phone) {
+  if (!phone) return ""
+
+  const cleaned = String(phone).replace(/\D/g, "")
+
+  if (!cleaned) return ""
+
+  if (cleaned.startsWith("255")) {
+    return `https://wa.me/${cleaned}`
+  }
+
+  if (cleaned.startsWith("0")) {
+    return `https://wa.me/255${cleaned.slice(1)}`
+  }
+
+  return `https://wa.me/${cleaned}`
+}
+
 function StorePage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -52,6 +70,29 @@ function StorePage() {
   if (!vendor) {
     return (
       <section className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)]">
+        <header className="sticky top-0 z-30 border-b border-[var(--color-border)] bg-[var(--color-bg)]/95 backdrop-blur-md">
+          <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 md:px-6">
+            <button
+              type="button"
+              onClick={() => navigate("/soko")}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-navy)] text-white shadow-sm transition hover:bg-[var(--color-navy-soft)]"
+              aria-label="Rudi sokoni"
+            >
+              <ArrowLeft size={22} strokeWidth={2.7} />
+            </button>
+
+            <div className="min-w-0">
+              <p className="truncate text-sm font-black leading-tight text-gray-950 md:text-base">
+                Duka halijapatikana
+              </p>
+
+              <p className="truncate text-[10px] font-semibold text-[var(--color-muted)]">
+                CloveNet Soko
+              </p>
+            </div>
+          </div>
+        </header>
+
         <main className="mx-auto max-w-4xl px-4 py-8 pb-28 md:px-6 md:pb-8">
           <div className="rounded-[2rem] border border-[var(--color-border)] bg-white p-6 shadow-sm">
             <EmptyState
@@ -79,6 +120,7 @@ function StorePage() {
   }
 
   const isVerified = vendor.status === "verified" || vendor.isVerified
+  const whatsappLink = getWhatsAppLink(vendor.whatsapp)
 
   return (
     <section className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)]">
@@ -190,7 +232,9 @@ function StorePage() {
                     className="shrink-0 text-[var(--color-green)]"
                   />
                   <span className="truncate">
-                    {vendor.whatsapp || "Haijawekwa"}
+                    {vendor.whatsapp
+                      ? "WhatsApp ipo tayari"
+                      : "Haijawekwa"}
                   </span>
                 </p>
               </div>
@@ -209,6 +253,29 @@ function StorePage() {
                   <span>{products.length} bidhaa</span>
                 </p>
               </div>
+            </div>
+
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              {whatsappLink && (
+                <a
+                  href={whatsappLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[var(--color-green)] px-5 py-3 text-sm font-black text-[var(--color-navy)] transition hover:bg-[var(--color-green-dark)] hover:text-white"
+                >
+                  <MessageCircle size={17} strokeWidth={2.7} />
+                  Wasiliana WhatsApp
+                </a>
+              )}
+
+              <button
+                type="button"
+                onClick={() => navigate("/soko")}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/15 bg-white/10 px-5 py-3 text-sm font-black text-white transition hover:bg-white/15"
+              >
+                Angalia Soko Zima
+                <ArrowRight size={17} strokeWidth={2.7} />
+              </button>
             </div>
           </div>
         </section>

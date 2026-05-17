@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import {
   ArrowLeft,
   ArrowRight,
@@ -47,14 +47,19 @@ const initialForm = {
 }
 
 const initialErrors = {
+  ownerName: "",
+  storeName: "",
   whatsapp: "",
+  location: "",
   category: "",
+  description: "",
   password: "",
   confirmPassword: "",
 }
 
 function VendorRegisterPage() {
   const navigate = useNavigate()
+
   const [form, setForm] = useState(initialForm)
   const [errors, setErrors] = useState(initialErrors)
   const [isSubmitted, setIsSubmitted] = useState(false)
@@ -78,6 +83,13 @@ function VendorRegisterPage() {
         [name]: "",
       }))
     }
+
+    if (name === "category" && errors.category) {
+      setErrors((current) => ({
+        ...current,
+        category: "",
+      }))
+    }
   }
 
   function getFinalCategory() {
@@ -90,31 +102,80 @@ function VendorRegisterPage() {
 
   function validate() {
     const newErrors = { ...initialErrors }
+    const vendors = StorageService.getVendors()
+
+    const ownerName = form.ownerName.trim()
+    const storeName = form.storeName.trim()
+    const location = form.location.trim()
+    const description = form.description.trim()
+    const finalCategory = getFinalCategory()
+    const digits = form.whatsapp.replace(/\D/g, "")
+    const normalizedWhatsapp = normalizePhone(form.whatsapp)
+
     let isValid = true
 
-    const digits = form.whatsapp.replace(/\D/g, "")
+    if (ownerName.length < 2) {
+      newErrors.ownerName = "Weka jina sahihi la mmiliki."
+      isValid = false
+    }
+
+    if (storeName.length < 2) {
+      newErrors.storeName = "Weka jina sahihi la duka."
+      isValid = false
+    }
 
     if (digits.length < 9 || digits.length > 13) {
       newErrors.whatsapp = "Weka namba sahihi ya simu. Mfano: +255700000000"
       isValid = false
     }
 
-    if (!getFinalCategory()) {
+    if (location.length < 2) {
+      newErrors.location = "Weka eneo la biashara yako."
+      isValid = false
+    }
+
+    if (!finalCategory) {
       newErrors.category = "Chagua au andika aina ya biashara yako."
       isValid = false
     }
 
+    if (description.length < 8) {
+      newErrors.description = "Andika maelezo mafupi ya duka lako."
+      isValid = false
+    }
+
     if (form.password.length < 6) {
-      newErrors.password = "Neno la siri liwe na herufi angalau 6"
+      newErrors.password = "Neno la siri liwe na herufi angalau 6."
       isValid = false
     }
 
     if (form.password !== form.confirmPassword) {
-      newErrors.confirmPassword = "Maneno ya siri hayalingani"
+      newErrors.confirmPassword = "Maneno ya siri hayalingani."
+      isValid = false
+    }
+
+    const storeExists = vendors.some((vendor) => {
+      return (
+        vendor.storeName?.trim().toLowerCase() === storeName.toLowerCase()
+      )
+    })
+
+    if (storeExists) {
+      newErrors.storeName = "Jina hili la duka tayari limeshatumika."
+      isValid = false
+    }
+
+    const phoneExists = vendors.some((vendor) => {
+      return normalizePhone(vendor.whatsapp || "") === normalizedWhatsapp
+    })
+
+    if (phoneExists) {
+      newErrors.whatsapp = "Namba hii tayari imesajiliwa na duka jingine."
       isValid = false
     }
 
     setErrors(newErrors)
+
     return isValid
   }
 
@@ -135,6 +196,9 @@ function VendorRegisterPage() {
       plan: "free",
       productLimit: 15,
 
+      // MVP note:
+      // Kwa sasa password inahifadhiwa localStorage kwa demo/MVP.
+      // Backend ikianza, hii itahamia kwenye auth salama.
       password: form.password,
 
       status: "pending_verification",
@@ -143,10 +207,14 @@ function VendorRegisterPage() {
     }
 
     const vendors = StorageService.getVendors()
+
     StorageService.saveVendors([newVendor, ...vendors])
 
     setIsSubmitted(true)
     setForm(initialForm)
+    setErrors(initialErrors)
+    setShowPassword(false)
+    setShowConfirmPassword(false)
   }
 
   if (isSubmitted) {
@@ -205,6 +273,14 @@ function VendorRegisterPage() {
               >
                 Ingia Dukani
                 <ArrowRight size={16} strokeWidth={2.7} />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigate("/support")}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[var(--color-border)] bg-white px-6 py-3 text-sm font-black text-gray-700 transition hover:bg-[var(--color-bg)]"
+              >
+                Wasiliana Support
               </button>
 
               <button
@@ -288,7 +364,13 @@ function VendorRegisterPage() {
                   Jina la mmiliki
                 </label>
 
-                <div className="mt-2 flex items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 transition focus-within:border-[var(--color-green)] focus-within:ring-2 focus-within:ring-[var(--color-green)]/20">
+                <div
+                  className={`mt-2 flex items-center gap-2 rounded-2xl border bg-[var(--color-bg)] px-4 py-3 transition focus-within:ring-2 focus-within:ring-[var(--color-green)]/20 ${
+                    errors.ownerName
+                      ? "border-red-400"
+                      : "border-[var(--color-border)] focus-within:border-[var(--color-green)]"
+                  }`}
+                >
                   <UserRound
                     size={18}
                     strokeWidth={2.5}
@@ -305,6 +387,12 @@ function VendorRegisterPage() {
                     className="w-full bg-transparent text-sm font-semibold text-gray-800 outline-none placeholder:text-gray-400"
                   />
                 </div>
+
+                {errors.ownerName && (
+                  <p className="mt-1.5 text-xs font-semibold text-red-500">
+                    {errors.ownerName}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -315,7 +403,13 @@ function VendorRegisterPage() {
                   Jina la duka
                 </label>
 
-                <div className="mt-2 flex items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 transition focus-within:border-[var(--color-green)] focus-within:ring-2 focus-within:ring-[var(--color-green)]/20">
+                <div
+                  className={`mt-2 flex items-center gap-2 rounded-2xl border bg-[var(--color-bg)] px-4 py-3 transition focus-within:ring-2 focus-within:ring-[var(--color-green)]/20 ${
+                    errors.storeName
+                      ? "border-red-400"
+                      : "border-[var(--color-border)] focus-within:border-[var(--color-green)]"
+                  }`}
+                >
                   <Store
                     size={18}
                     strokeWidth={2.5}
@@ -332,6 +426,12 @@ function VendorRegisterPage() {
                     className="w-full bg-transparent text-sm font-semibold text-gray-800 outline-none placeholder:text-gray-400"
                   />
                 </div>
+
+                {errors.storeName && (
+                  <p className="mt-1.5 text-xs font-semibold text-red-500">
+                    {errors.storeName}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -339,7 +439,7 @@ function VendorRegisterPage() {
                   htmlFor="whatsapp"
                   className="text-xs font-black text-gray-700"
                 >
-                  Namba ya simu
+                  Namba ya simu / WhatsApp
                 </label>
 
                 <div
@@ -382,7 +482,13 @@ function VendorRegisterPage() {
                   Eneo / Location
                 </label>
 
-                <div className="mt-2 flex items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 transition focus-within:border-[var(--color-green)] focus-within:ring-2 focus-within:ring-[var(--color-green)]/20">
+                <div
+                  className={`mt-2 flex items-center gap-2 rounded-2xl border bg-[var(--color-bg)] px-4 py-3 transition focus-within:ring-2 focus-within:ring-[var(--color-green)]/20 ${
+                    errors.location
+                      ? "border-red-400"
+                      : "border-[var(--color-border)] focus-within:border-[var(--color-green)]"
+                  }`}
+                >
                   <MapPin
                     size={18}
                     strokeWidth={2.5}
@@ -399,6 +505,12 @@ function VendorRegisterPage() {
                     className="w-full bg-transparent text-sm font-semibold text-gray-800 outline-none placeholder:text-gray-400"
                   />
                 </div>
+
+                {errors.location && (
+                  <p className="mt-1.5 text-xs font-semibold text-red-500">
+                    {errors.location}
+                  </p>
+                )}
               </div>
 
               <div className="md:col-span-2">
@@ -468,8 +580,18 @@ function VendorRegisterPage() {
                   onChange={handleChange}
                   placeholder="Elezea duka lako kwa kifupi..."
                   rows={3}
-                  className="mt-2 w-full resize-none rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-[var(--color-green)] focus:ring-2 focus:ring-[var(--color-green)]/20"
+                  className={`mt-2 w-full resize-none rounded-2xl border bg-[var(--color-bg)] px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-[var(--color-green)] focus:ring-2 focus:ring-[var(--color-green)]/20 ${
+                    errors.description
+                      ? "border-red-400"
+                      : "border-[var(--color-border)]"
+                  }`}
                 />
+
+                {errors.description && (
+                  <p className="mt-1.5 text-xs font-semibold text-red-500">
+                    {errors.description}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -511,7 +633,9 @@ function VendorRegisterPage() {
                     onClick={() => setShowPassword((current) => !current)}
                     className="shrink-0 text-gray-500 transition hover:text-[var(--color-navy)]"
                     aria-label={
-                      showPassword ? "Ficha neno la siri" : "Onyesha neno la siri"
+                      showPassword
+                        ? "Ficha neno la siri"
+                        : "Onyesha neno la siri"
                     }
                   >
                     {showPassword ? (
@@ -610,6 +734,24 @@ function VendorRegisterPage() {
                 Ingia dukani
               </button>
             </div>
+
+            <p className="mt-5 text-center text-[11px] font-semibold leading-5 text-[var(--color-muted)]">
+              Kwa kusajili duka, unakubaliana na{" "}
+              <Link
+                to="/terms"
+                className="font-black text-[var(--color-green-dark)] hover:underline"
+              >
+                Masharti ya Matumizi
+              </Link>{" "}
+              na{" "}
+              <Link
+                to="/privacy"
+                className="font-black text-[var(--color-green-dark)] hover:underline"
+              >
+                Privacy Policy
+              </Link>
+              .
+            </p>
           </form>
         </div>
       </div>

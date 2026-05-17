@@ -15,7 +15,9 @@ const read = (key, fallback) => {
       return fallback
     }
 
-    return JSON.parse(raw)
+    const parsed = JSON.parse(raw)
+
+    return parsed ?? fallback
   } catch (error) {
     console.error(`Failed to read ${key} from localStorage`, error)
     return fallback
@@ -50,9 +52,15 @@ const getProductImages = (product) => {
   return []
 }
 
+const notifyCartUpdated = () => {
+  window.dispatchEvent(new Event("clovenet-cart-updated"))
+}
+
 export const StorageService = {
   getVendors() {
-    return read(STORAGE_KEYS.vendors, [])
+    const vendors = read(STORAGE_KEYS.vendors, [])
+
+    return Array.isArray(vendors) ? vendors : []
   },
 
   saveVendors(vendors) {
@@ -60,7 +68,9 @@ export const StorageService = {
   },
 
   getProducts() {
-    return read(STORAGE_KEYS.products, [])
+    const products = read(STORAGE_KEYS.products, [])
+
+    return Array.isArray(products) ? products : []
   },
 
   saveProducts(products) {
@@ -68,6 +78,10 @@ export const StorageService = {
   },
 
   updateProduct(productId, updates) {
+    if (!productId) {
+      return this.getProducts()
+    }
+
     const products = this.getProducts()
 
     const updatedProducts = products.map((product) =>
@@ -80,15 +94,19 @@ export const StorageService = {
     )
 
     this.saveProducts(updatedProducts)
+
     return updatedProducts
   },
 
   getCart() {
-    return read(STORAGE_KEYS.cart, [])
+    const cart = read(STORAGE_KEYS.cart, [])
+
+    return Array.isArray(cart) ? cart : []
   },
 
   saveCart(cart) {
     write(STORAGE_KEYS.cart, Array.isArray(cart) ? cart : [])
+    notifyCartUpdated()
   },
 
   addToCart(product) {
@@ -122,7 +140,7 @@ export const StorageService = {
         {
           id: `cart_${Date.now()}`,
           productId: product.id,
-          vendorId: product.vendorId,
+          vendorId: product.vendorId || product.vendor?.id || "",
           name: product.name || "Bidhaa",
           category: product.category || "",
           price: safeNumber(product.price),
@@ -137,18 +155,28 @@ export const StorageService = {
     }
 
     this.saveCart(updatedCart)
+
     return updatedCart
   },
 
   removeFromCart(productId) {
+    if (!productId) {
+      return this.getCart()
+    }
+
     const cart = this.getCart()
     const updatedCart = cart.filter((item) => item.productId !== productId)
 
     this.saveCart(updatedCart)
+
     return updatedCart
   },
 
   updateCartQuantity(productId, quantity) {
+    if (!productId) {
+      return this.getCart()
+    }
+
     const nextQuantity = safeNumber(quantity)
 
     if (nextQuantity <= 0) {
@@ -167,16 +195,20 @@ export const StorageService = {
     )
 
     this.saveCart(updatedCart)
+
     return updatedCart
   },
 
   clearCart() {
     this.saveCart([])
+
     return []
   },
 
   getOrders() {
-    return read(STORAGE_KEYS.orders, [])
+    const orders = read(STORAGE_KEYS.orders, [])
+
+    return Array.isArray(orders) ? orders : []
   },
 
   saveOrders(orders) {
@@ -220,35 +252,61 @@ export const StorageService = {
   },
 
   getCurrentVendorId() {
-    return localStorage.getItem(STORAGE_KEYS.currentVendorId) || ""
+    try {
+      return localStorage.getItem(STORAGE_KEYS.currentVendorId) || ""
+    } catch {
+      return ""
+    }
   },
 
   setCurrentVendorId(vendorId) {
-    if (!vendorId) {
-      this.clearCurrentVendorId()
-      return
-    }
+    try {
+      if (!vendorId) {
+        this.clearCurrentVendorId()
+        return
+      }
 
-    localStorage.setItem(STORAGE_KEYS.currentVendorId, vendorId)
+      localStorage.setItem(STORAGE_KEYS.currentVendorId, vendorId)
+    } catch (error) {
+      console.error("Failed to save current vendor id", error)
+    }
   },
 
   clearCurrentVendorId() {
-    localStorage.removeItem(STORAGE_KEYS.currentVendorId)
+    try {
+      localStorage.removeItem(STORAGE_KEYS.currentVendorId)
+    } catch (error) {
+      console.error("Failed to clear current vendor id", error)
+    }
   },
 
   // TODO: Dark mode support will be implemented later.
   // These methods are kept here so theme storage remains centralized.
   getTheme() {
-    return localStorage.getItem(STORAGE_KEYS.theme) || "light"
+    try {
+      return localStorage.getItem(STORAGE_KEYS.theme) || "light"
+    } catch {
+      return "light"
+    }
   },
 
   setTheme(theme) {
-    localStorage.setItem(STORAGE_KEYS.theme, theme)
+    try {
+      localStorage.setItem(STORAGE_KEYS.theme, theme || "light")
+    } catch (error) {
+      console.error("Failed to save theme", error)
+    }
   },
 
   resetAll() {
     Object.values(STORAGE_KEYS).forEach((key) => {
-      localStorage.removeItem(key)
+      try {
+        localStorage.removeItem(key)
+      } catch (error) {
+        console.error(`Failed to remove ${key} from localStorage`, error)
+      }
     })
+
+    notifyCartUpdated()
   },
 }

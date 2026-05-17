@@ -61,6 +61,37 @@ function getImageLimitByVendor(vendor) {
   return 5
 }
 
+function getCategoryFormValue(category) {
+  const exists = PRODUCT_CATEGORIES.some((item) => item.value === category)
+
+  if (!category) return ""
+  if (exists) return category
+
+  return "Other"
+}
+
+function buildFormFromProduct(product) {
+  const categoryValue = getCategoryFormValue(product?.category || "")
+  const productImages = Array.isArray(product?.images)
+    ? product.images
+    : product?.image
+      ? [product.image]
+      : []
+
+  return {
+    name: product?.name || "",
+    category: categoryValue,
+    otherCategory:
+      product?.category && categoryValue === "Other" ? product.category : "",
+    price: product?.price ? String(product.price) : "",
+    oldPrice: product?.oldPrice ? String(product.oldPrice) : "",
+    specs: product?.specs || "",
+    description: product?.description || "",
+    featured: Boolean(product?.featured),
+    images: productImages.filter(Boolean),
+  }
+}
+
 function compressImage(file) {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith("image/")) {
@@ -106,6 +137,8 @@ function VendorProductsPage() {
   const [form, setForm] = useState(initialForm)
   const [products, setProducts] = useState(() => StorageService.getProducts())
   const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
+  const [editingProductId, setEditingProductId] = useState("")
 
   const vendor = useMemo(() => {
     const vendorId = StorageService.getCurrentVendorId()
@@ -120,10 +153,11 @@ function VendorProductsPage() {
     return products.filter((product) => product.vendorId === vendor.id)
   }, [products, vendor])
 
+  const isEditing = Boolean(editingProductId)
   const productLimit = Number(vendor?.productLimit || 15)
   const imageLimit = getImageLimitByVendor(vendor)
   const remainingProducts = Math.max(productLimit - vendorProducts.length, 0)
-  const hasReachedLimit = vendorProducts.length >= productLimit
+  const hasReachedLimit = !isEditing && vendorProducts.length >= productLimit
   const productUsagePercent = Math.min(
     Math.round((vendorProducts.length / productLimit) * 100),
     100
@@ -141,6 +175,7 @@ function VendorProductsPage() {
     }))
 
     setError("")
+    setSuccess("")
   }
 
   async function handleImageUpload(event) {
@@ -187,6 +222,7 @@ function VendorProductsPage() {
     }))
 
     setError("")
+    setSuccess("")
   }
 
   function getFinalCategory() {
@@ -199,7 +235,40 @@ function VendorProductsPage() {
 
   function resetForm() {
     setForm(initialForm)
+    setEditingProductId("")
     setError("")
+  }
+
+  function validateProductForm() {
+    const finalCategory = getFinalCategory()
+    const price = Number(form.price)
+    const oldPrice = form.oldPrice ? Number(form.oldPrice) : 0
+
+    if (!form.name.trim()) {
+      setError("Weka jina la bidhaa.")
+      return null
+    }
+
+    if (!finalCategory) {
+      setError("Chagua au andika category ya bidhaa.")
+      return null
+    }
+
+    if (!price || price <= 0) {
+      setError("Weka bei sahihi ya bidhaa.")
+      return null
+    }
+
+    if (oldPrice && oldPrice < price) {
+      setError("Bei ya zamani isiwe ndogo kuliko bei ya sasa.")
+      return null
+    }
+
+    return {
+      finalCategory,
+      price,
+      oldPrice,
+    }
   }
 
   function handleSubmit(event) {
@@ -217,31 +286,50 @@ function VendorProductsPage() {
       return
     }
 
-    const finalCategory = getFinalCategory()
-    const price = Number(form.price)
-    const oldPrice = form.oldPrice ? Number(form.oldPrice) : 0
+    const validated = validateProductForm()
 
-    if (!form.name.trim()) {
-      setError("Weka jina la bidhaa.")
-      return
-    }
+    if (!validated) return
 
-    if (!finalCategory) {
-      setError("Chagua au andika category ya bidhaa.")
-      return
-    }
-
-    if (!price || price <= 0) {
-      setError("Weka bei sahihi ya bidhaa.")
-      return
-    }
-
-    if (oldPrice && oldPrice < price) {
-      setError("Bei ya zamani isiwe ndogo kuliko bei ya sasa.")
-      return
-    }
-
+    const { finalCategory, price, oldPrice } = validated
     const productImages = form.images.slice(0, imageLimit)
+
+    if (isEditing) {
+      const productToEdit = products.find(
+        (product) =>
+          product.id === editingProductId && product.vendorId === vendor.id
+      )
+
+      if (!productToEdit) {
+        setError("Bidhaa unayotaka ku-edit haijapatikana.")
+        return
+      }
+
+      const updatedProducts = products.map((product) => {
+        if (product.id !== editingProductId || product.vendorId !== vendor.id) {
+          return product
+        }
+
+        return {
+          ...product,
+          name: form.name.trim(),
+          category: finalCategory,
+          price,
+          oldPrice,
+          specs: form.specs.trim(),
+          description: form.description.trim(),
+          featured: form.featured,
+          image: productImages[0] || "",
+          images: productImages,
+          updatedAt: new Date().toISOString(),
+        }
+      })
+
+      setProducts(updatedProducts)
+      StorageService.saveProducts(updatedProducts)
+      setSuccess("Mabadiliko ya bidhaa yamehifadhiwa.")
+      resetForm()
+      return
+    }
 
     const newProduct = {
       id: createId("product"),
@@ -264,7 +352,30 @@ function VendorProductsPage() {
 
     setProducts(updatedProducts)
     StorageService.saveProducts(updatedProducts)
+    setSuccess("Bidhaa imehifadhiwa kikamilifu.")
     resetForm()
+  }
+
+  function startEditProduct(product) {
+    if (!vendor || product.vendorId !== vendor.id) {
+      setError("Huwezi ku-edit bidhaa ya vendor mwingine.")
+      return
+    }
+
+    setEditingProductId(product.id)
+    setForm(buildFormFromProduct(product))
+    setError("")
+    setSuccess("")
+
+    window.scrollTo({
+      top: 0,
+      behavior: "auto",
+    })
+  }
+
+  function cancelEdit() {
+    resetForm()
+    setSuccess("")
   }
 
   function deleteProduct(productId) {
@@ -280,6 +391,12 @@ function VendorProductsPage() {
 
     setProducts(updatedProducts)
     StorageService.saveProducts(updatedProducts)
+
+    if (editingProductId === productId) {
+      resetForm()
+    }
+
+    setSuccess("Bidhaa imefutwa.")
   }
 
   if (!vendor) {
@@ -319,8 +436,8 @@ function VendorProductsPage() {
             </h1>
 
             <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-[var(--color-muted)]">
-              Ongeza, angalia na simamia bidhaa za duka lako. Bidhaa za vendor
-              aliyethibitishwa zitaonekana kwenye marketplace.
+              Ongeza, angalia, edit na simamia bidhaa za duka lako. Bidhaa za
+              vendor aliyethibitishwa zitaonekana kwenye marketplace.
             </p>
           </div>
 
@@ -381,6 +498,38 @@ function VendorProductsPage() {
           </div>
         </div>
 
+        {(error || success) && (
+          <div
+            className={`mb-5 rounded-2xl border p-4 ${
+              error ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"
+            }`}
+          >
+            <div className="flex items-start gap-2">
+              {error ? (
+                <AlertCircle
+                  size={18}
+                  strokeWidth={2.6}
+                  className="mt-0.5 shrink-0 text-red-600"
+                />
+              ) : (
+                <Check
+                  size={18}
+                  strokeWidth={3}
+                  className="mt-0.5 shrink-0 text-green-700"
+                />
+              )}
+
+              <p
+                className={`text-sm font-bold leading-5 ${
+                  error ? "text-red-700" : "text-green-700"
+                }`}
+              >
+                {error || success}
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
           <form
             onSubmit={handleSubmit}
@@ -389,35 +538,26 @@ function VendorProductsPage() {
             <div>
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--color-green-soft)] text-[var(--color-green-dark)]">
-                  <Plus size={21} strokeWidth={2.8} />
+                  {isEditing ? (
+                    <Edit3 size={21} strokeWidth={2.8} />
+                  ) : (
+                    <Plus size={21} strokeWidth={2.8} />
+                  )}
                 </div>
 
                 <div>
                   <h2 className="text-lg font-black text-gray-950">
-                    Ongeza bidhaa mpya
+                    {isEditing ? "Edit bidhaa" : "Ongeza bidhaa mpya"}
                   </h2>
 
                   <p className="mt-1 text-xs font-semibold text-[var(--color-muted)]">
-                    Jaza taarifa za bidhaa ili ionekane vizuri kwa wateja.
+                    {isEditing
+                      ? "Badilisha taarifa za bidhaa, kisha hifadhi mabadiliko."
+                      : "Jaza taarifa za bidhaa ili ionekane vizuri kwa wateja."}
                   </p>
                 </div>
               </div>
             </div>
-
-            {error && (
-              <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4">
-                <div className="flex items-start gap-2">
-                  <AlertCircle
-                    size={18}
-                    strokeWidth={2.6}
-                    className="mt-0.5 shrink-0 text-red-600"
-                  />
-                  <p className="text-sm font-bold leading-5 text-red-700">
-                    {error}
-                  </p>
-                </div>
-              </div>
-            )}
 
             {hasReachedLimit && (
               <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4">
@@ -434,8 +574,8 @@ function VendorProductsPage() {
                     </p>
 
                     <p className="mt-1 text-xs font-semibold leading-5 text-amber-700">
-                      Huwezi kuongeza bidhaa mpya kwa sasa. Tutawezesha kuongeza
-                      nafasi zaidi kwenye hatua inayofuata.
+                      Huwezi kuongeza bidhaa mpya kwa sasa. Lakini unaweza
+                      ku-edit bidhaa ulizoweka tayari.
                     </p>
                   </div>
                 </div>
@@ -667,14 +807,27 @@ function VendorProductsPage() {
               </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={hasReachedLimit}
-              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--color-green)] px-5 py-3 text-sm font-black text-[var(--color-navy)] transition hover:bg-[var(--color-green-dark)] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Save size={16} strokeWidth={2.7} />
-              Hifadhi Bidhaa
-            </button>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <button
+                type="submit"
+                disabled={hasReachedLimit}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--color-green)] px-5 py-3 text-sm font-black text-[var(--color-navy)] transition hover:bg-[var(--color-green-dark)] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Save size={16} strokeWidth={2.7} />
+                {isEditing ? "Hifadhi Mabadiliko" : "Hifadhi Bidhaa"}
+              </button>
+
+              {isEditing && (
+                <button
+                  type="button"
+                  onClick={cancelEdit}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[var(--color-border)] bg-white px-5 py-3 text-sm font-black text-gray-700 transition hover:bg-[var(--color-bg)]"
+                >
+                  <X size={16} strokeWidth={2.7} />
+                  Cancel Edit
+                </button>
+              )}
+            </div>
           </form>
 
           <div className="rounded-[2rem] border border-[var(--color-border)] bg-white p-5 shadow-sm md:p-6">
@@ -714,11 +867,16 @@ function VendorProductsPage() {
                       ? [product.image]
                       : []
                   const mainImage = productImages[0] || ""
+                  const activeEditing = editingProductId === product.id
 
                   return (
                     <article
                       key={product.id}
-                      className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4"
+                      className={`rounded-2xl border p-4 transition ${
+                        activeEditing
+                          ? "border-[var(--color-green)] bg-[var(--color-green-soft)]/45"
+                          : "border-[var(--color-border)] bg-[var(--color-bg)]"
+                      }`}
                     >
                       <div className="flex gap-3">
                         <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white text-[var(--color-navy)] shadow-sm">
@@ -778,12 +936,15 @@ function VendorProductsPage() {
                           <div className="mt-3 flex flex-wrap gap-2">
                             <button
                               type="button"
-                              disabled
-                              title="Feature hii itaongezwa baadaye"
-                              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--color-border)] bg-white px-3 py-2 text-xs font-black text-gray-400 opacity-70"
+                              onClick={() => startEditProduct(product)}
+                              className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-black transition ${
+                                activeEditing
+                                  ? "border-[var(--color-green)] bg-white text-[var(--color-green-dark)]"
+                                  : "border-[var(--color-border)] bg-white text-gray-700 hover:bg-[var(--color-green-soft)] hover:text-[var(--color-green-dark)]"
+                              }`}
                             >
                               <Edit3 size={13} strokeWidth={2.7} />
-                              Edit · Inakuja
+                              {activeEditing ? "Editing" : "Edit"}
                             </button>
 
                             <button
@@ -800,6 +961,12 @@ function VendorProductsPage() {
                               {product.views || 0} views
                             </div>
                           </div>
+
+                          {product.updatedAt && (
+                            <p className="mt-2 text-[10px] font-bold text-[var(--color-muted)]">
+                              Updated recently
+                            </p>
+                          )}
                         </div>
                       </div>
                     </article>

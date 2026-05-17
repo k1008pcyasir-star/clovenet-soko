@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom"
 import {
   ArrowRight,
   BarChart3,
+  BadgeCheck,
+  Eye,
   LockKeyhole,
   MapPin,
   MessageCircle,
@@ -82,6 +84,11 @@ function VendorDashboardPage() {
     100
   )
   const isVerified = vendor.status === "verified" || vendor.isVerified
+  const totalViews = products.reduce(
+    (sum, product) => sum + Number(product.views || 0),
+    0
+  )
+  const featuredProducts = products.filter((product) => product.featured).length
 
   return (
     <section className="min-h-screen bg-[var(--color-bg)] px-4 py-6 text-[var(--color-text)] md:px-6 md:py-8">
@@ -125,8 +132,8 @@ function VendorDashboardPage() {
                 </h1>
 
                 <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-slate-300">
-                  Simamia bidhaa zako, angalia activity ya duka, na endelea
-                  kupokea order kupitia WhatsApp.
+                  Simamia bidhaa zako, badilisha bei, angalia activity ya duka,
+                  na endelea kupokea order kupitia WhatsApp.
                 </p>
 
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row">
@@ -136,7 +143,7 @@ function VendorDashboardPage() {
                     className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[var(--color-green)] px-5 py-3 text-sm font-black text-[var(--color-navy)] transition hover:bg-[var(--color-green-dark)] hover:text-white"
                   >
                     <Plus size={17} strokeWidth={2.8} />
-                    Ongeza Bidhaa
+                    Simamia Bidhaa
                   </button>
 
                   <button
@@ -152,61 +159,29 @@ function VendorDashboardPage() {
             </div>
 
             <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-              <div className="rounded-3xl border border-[var(--color-border)] bg-white p-4 shadow-sm">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--color-green-soft)] text-[var(--color-green-dark)]">
-                  <Package size={18} strokeWidth={2.6} />
-                </div>
+              <DashboardStat
+                icon={<Package size={18} strokeWidth={2.6} />}
+                value={products.length}
+                label="Bidhaa"
+              />
 
-                <p className="mt-3 text-2xl font-black text-gray-950">
-                  {products.length}
-                </p>
+              <DashboardStat
+                icon={<Plus size={18} strokeWidth={2.6} />}
+                value={remainingProducts}
+                label="Nafasi Baki"
+              />
 
-                <p className="mt-1 text-xs font-bold text-[var(--color-muted)]">
-                  Bidhaa
-                </p>
-              </div>
+              <DashboardStat
+                icon={<MessageCircle size={18} strokeWidth={2.6} />}
+                value={orders.length}
+                label="WhatsApp clicks"
+              />
 
-              <div className="rounded-3xl border border-[var(--color-border)] bg-white p-4 shadow-sm">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--color-green-soft)] text-[var(--color-green-dark)]">
-                  <Plus size={18} strokeWidth={2.6} />
-                </div>
-
-                <p className="mt-3 text-2xl font-black text-gray-950">
-                  {remainingProducts}
-                </p>
-
-                <p className="mt-1 text-xs font-bold text-[var(--color-muted)]">
-                  Nafasi Baki
-                </p>
-              </div>
-
-              <div className="rounded-3xl border border-[var(--color-border)] bg-white p-4 shadow-sm">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--color-green-soft)] text-[var(--color-green-dark)]">
-                  <MessageCircle size={18} strokeWidth={2.6} />
-                </div>
-
-                <p className="mt-3 text-2xl font-black text-gray-950">
-                  {orders.length}
-                </p>
-
-                <p className="mt-1 text-xs font-bold text-[var(--color-muted)]">
-                  WhatsApp clicks
-                </p>
-              </div>
-
-              <div className="rounded-3xl border border-[var(--color-border)] bg-white p-4 shadow-sm">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--color-green-soft)] text-[var(--color-green-dark)]">
-                  <ShieldCheck size={18} strokeWidth={2.6} />
-                </div>
-
-                <p className="mt-3 text-2xl font-black text-gray-950">
-                  {isVerified ? "Yes" : "No"}
-                </p>
-
-                <p className="mt-1 text-xs font-bold text-[var(--color-muted)]">
-                  Verified
-                </p>
-              </div>
+              <DashboardStat
+                icon={<Eye size={18} strokeWidth={2.6} />}
+                value={totalViews}
+                label="Product views"
+              />
             </div>
 
             <div className="mt-5 rounded-[2rem] border border-[var(--color-border)] bg-white p-5 shadow-sm">
@@ -237,7 +212,7 @@ function VendorDashboardPage() {
                   </h3>
 
                   <p className="mt-1 text-xs font-semibold leading-5 text-[var(--color-muted)]">
-                    Ongeza, angalia au simamia bidhaa za duka lako.
+                    Ongeza, edit, futa au badilisha bei za bidhaa zako.
                   </p>
                 </button>
 
@@ -276,6 +251,66 @@ function VendorDashboardPage() {
                     Ona bidhaa zako zinavyoonekana kwa wateja.
                   </p>
                 </button>
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-[2rem] border border-[var(--color-border)] bg-white p-5 shadow-sm">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400">
+                    Store Performance
+                  </p>
+
+                  <h2 className="mt-1 text-lg font-black text-gray-950">
+                    Muhtasari wa duka
+                  </h2>
+                </div>
+              </div>
+
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl bg-[var(--color-bg)] p-4">
+                  <div className="flex items-center gap-2">
+                    <BadgeCheck
+                      size={17}
+                      strokeWidth={2.6}
+                      className="text-[var(--color-green-dark)]"
+                    />
+
+                    <p className="text-sm font-black text-gray-950">
+                      Featured products
+                    </p>
+                  </div>
+
+                  <p className="mt-3 text-2xl font-black text-[var(--color-navy)]">
+                    {featuredProducts}
+                  </p>
+
+                  <p className="mt-1 text-xs font-semibold text-[var(--color-muted)]">
+                    Bidhaa zilizowekwa kama featured.
+                  </p>
+                </div>
+
+                <div className="rounded-2xl bg-[var(--color-bg)] p-4">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck
+                      size={17}
+                      strokeWidth={2.6}
+                      className="text-[var(--color-green-dark)]"
+                    />
+
+                    <p className="text-sm font-black text-gray-950">
+                      Verification
+                    </p>
+                  </div>
+
+                  <p className="mt-3 text-2xl font-black text-[var(--color-navy)]">
+                    {isVerified ? "Verified" : "Pending"}
+                  </p>
+
+                  <p className="mt-1 text-xs font-semibold text-[var(--color-muted)]">
+                    Verification hubadilishwa na admin pekee.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -327,7 +362,9 @@ function VendorDashboardPage() {
                   />
                   <span>
                     <span className="font-black text-gray-950">WhatsApp:</span>{" "}
-                    {vendor.whatsapp || "Haijawekwa"}
+                    {vendor.whatsapp
+                      ? "WhatsApp ipo tayari"
+                      : "Haijawekwa"}
                   </span>
                 </p>
 
@@ -367,7 +404,8 @@ function VendorDashboardPage() {
               </h2>
 
               <p className="mt-2 text-xs font-semibold leading-5 text-[var(--color-muted)]">
-                Unaweza kuongeza bidhaa ndani ya nafasi yako ya sasa.
+                Unaweza kuongeza bidhaa ndani ya nafasi yako ya sasa. Hata
+                ukifikia limit, bado unaweza ku-edit bidhaa zilizopo.
               </p>
 
               <div className="mt-4 h-3 overflow-hidden rounded-full bg-[var(--color-bg)]">
@@ -394,8 +432,8 @@ function VendorDashboardPage() {
                   </p>
 
                   <p className="mt-1 text-xs font-semibold leading-5 text-[var(--color-muted)]">
-                    Kwa sasa huwezi kuongeza bidhaa mpya mpaka upate nafasi
-                    zaidi.
+                    Kwa sasa huwezi kuongeza bidhaa mpya, lakini unaweza
+                    kuendelea ku-edit bidhaa zako zilizopo.
                   </p>
                 </div>
               )}
@@ -404,6 +442,22 @@ function VendorDashboardPage() {
         </div>
       </div>
     </section>
+  )
+}
+
+function DashboardStat({ icon, value, label }) {
+  return (
+    <div className="rounded-3xl border border-[var(--color-border)] bg-white p-4 shadow-sm">
+      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--color-green-soft)] text-[var(--color-green-dark)]">
+        {icon}
+      </div>
+
+      <p className="mt-3 text-2xl font-black text-gray-950">{value}</p>
+
+      <p className="mt-1 text-xs font-bold text-[var(--color-muted)]">
+        {label}
+      </p>
+    </div>
   )
 }
 

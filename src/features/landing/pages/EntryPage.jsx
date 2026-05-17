@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useLocation, useNavigate } from "react-router-dom"
 import {
   Menu,
   Search,
@@ -19,7 +19,6 @@ import {
   Plug,
   MapPin,
   CheckCheck,
-  BadgeCheck,
   Sparkles,
 } from "lucide-react"
 
@@ -131,7 +130,7 @@ const mobileMenuItems = [
   },
   {
     label: "Why Us",
-    sectionId: "why-clovenet",
+    sectionId: "why-us",
     icon: Sparkles,
   },
   {
@@ -153,6 +152,8 @@ const mobileMenuItems = [
 
 function EntryPage() {
   const navigate = useNavigate()
+  const location = useLocation()
+
   const [searchVal, setSearchVal] = useState("")
   const [showMobileSearch, setShowMobileSearch] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
@@ -162,24 +163,71 @@ function EntryPage() {
     setShowMobileMenu(false)
   }
 
+  function forceInstantScrollToTop() {
+    const html = document.documentElement
+    const body = document.body
+
+    const previousHtmlBehavior = html.style.scrollBehavior
+    const previousBodyBehavior = body.style.scrollBehavior
+
+    html.style.scrollBehavior = "auto"
+    body.style.scrollBehavior = "auto"
+
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: "auto",
+    })
+
+    html.style.scrollBehavior = previousHtmlBehavior
+    body.style.scrollBehavior = previousBodyBehavior
+  }
+
+  function forceInstantScrollToSection(sectionId) {
+    const html = document.documentElement
+    const body = document.body
+
+    const previousHtmlBehavior = html.style.scrollBehavior
+    const previousBodyBehavior = body.style.scrollBehavior
+
+    html.style.scrollBehavior = "auto"
+    body.style.scrollBehavior = "auto"
+
+    const section = document.getElementById(sectionId)
+
+    if (section) {
+      section.scrollIntoView({
+        behavior: "auto",
+        block: "start",
+      })
+    }
+
+    html.style.scrollBehavior = previousHtmlBehavior
+    body.style.scrollBehavior = previousBodyBehavior
+  }
+
   function goTo(path) {
-    navigate(path)
     closeMobilePanels()
+
+    const currentPath = `${location.pathname}${location.search}${location.hash}`
+
+    if (currentPath === path || location.pathname === path) {
+      forceInstantScrollToTop()
+      return
+    }
+
+    navigate(path)
   }
 
   function scrollToSection(sectionId) {
     closeMobilePanels()
 
-    window.setTimeout(() => {
-      const section = document.getElementById(sectionId)
+    if (location.pathname !== "/") {
+      navigate(`/#${sectionId}`)
+      return
+    }
 
-      if (section) {
-        section.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        })
-      }
-    }, 80)
+    forceInstantScrollToSection(sectionId)
   }
 
   function handleSearchSubmit(event) {
@@ -237,7 +285,7 @@ function EntryPage() {
 
               <button
                 type="button"
-                onClick={() => scrollToSection("why-clovenet")}
+                onClick={() => scrollToSection("why-us")}
                 className="rounded-2xl px-4 py-2.5 text-sm font-bold text-gray-600 transition hover:bg-white hover:text-[var(--color-navy)]"
               >
                 Why Us?
@@ -511,7 +559,7 @@ function EntryPage() {
         </section>
 
         <section
-          id="why-clovenet"
+          id="why-us"
           className="scroll-mt-24 mt-5 rounded-[2rem] border border-[var(--color-border)] bg-[var(--color-card)] p-5 shadow-sm md:p-6"
         >
           <div className="grid gap-5 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">

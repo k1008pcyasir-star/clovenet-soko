@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import {
   ArrowLeft,
@@ -39,6 +39,22 @@ const initialMessage = {
   text: "",
 }
 
+const initialErrors = {
+  ownerName: "",
+  storeName: "",
+  whatsapp: "",
+  location: "",
+  category: "",
+  description: "",
+}
+
+function getCurrentVendor() {
+  const vendorId = StorageService.getCurrentVendorId()
+  const vendors = StorageService.getVendors()
+
+  return vendors.find((item) => item.id === vendorId) || null
+}
+
 function getCategoryFormValue(category) {
   const exists = BUSINESS_CATEGORIES.some((item) => item.value === category)
 
@@ -48,18 +64,8 @@ function getCategoryFormValue(category) {
   return "Other"
 }
 
-function VendorProfilePage() {
-  const navigate = useNavigate()
-  const [message, setMessage] = useState(initialMessage)
-
-  const vendor = useMemo(() => {
-    const vendorId = StorageService.getCurrentVendorId()
-    const vendors = StorageService.getVendors()
-
-    return vendors.find((item) => item.id === vendorId) || null
-  }, [])
-
-  const [form, setForm] = useState(() => ({
+function buildInitialForm(vendor) {
+  return {
     ownerName: vendor?.ownerName || "",
     storeName: vendor?.storeName || "",
     whatsapp: vendor?.whatsapp || "",
@@ -70,7 +76,16 @@ function VendorProfilePage() {
         ? vendor.category
         : "",
     description: vendor?.description || "",
-  }))
+  }
+}
+
+function VendorProfilePage() {
+  const navigate = useNavigate()
+
+  const [vendor, setVendor] = useState(() => getCurrentVendor())
+  const [form, setForm] = useState(() => buildInitialForm(getCurrentVendor()))
+  const [message, setMessage] = useState(initialMessage)
+  const [errors, setErrors] = useState(initialErrors)
 
   const isVerified = vendor?.status === "verified" || vendor?.isVerified
   const isSuspended = vendor?.status === "suspended"
@@ -95,33 +110,116 @@ function VendorProfilePage() {
     }))
 
     setMessage(initialMessage)
+
+    if (errors[name]) {
+      setErrors((current) => ({
+        ...current,
+        [name]: "",
+      }))
+    }
+
+    if (name === "category" && errors.category) {
+      setErrors((current) => ({
+        ...current,
+        category: "",
+      }))
+    }
+  }
+
+  function validate() {
+    if (!vendor) return false
+
+    const newErrors = { ...initialErrors }
+    const vendors = StorageService.getVendors()
+
+    const ownerName = form.ownerName.trim()
+    const storeName = form.storeName.trim()
+    const location = form.location.trim()
+    const description = form.description.trim()
+    const finalCategory = getFinalCategory()
+    const digits = form.whatsapp.replace(/\D/g, "")
+    const normalizedWhatsapp = normalizePhone(form.whatsapp)
+
+    let isValid = true
+
+    if (ownerName.length < 2) {
+      newErrors.ownerName = "Weka jina sahihi la mmiliki."
+      isValid = false
+    }
+
+    if (storeName.length < 2) {
+      newErrors.storeName = "Weka jina sahihi la duka."
+      isValid = false
+    }
+
+    if (digits.length < 9 || digits.length > 13) {
+      newErrors.whatsapp = "Weka namba sahihi ya simu. Mfano: +255700000000"
+      isValid = false
+    }
+
+    if (location.length < 2) {
+      newErrors.location = "Weka eneo la biashara yako."
+      isValid = false
+    }
+
+    if (!finalCategory) {
+      newErrors.category = "Chagua au andika aina ya biashara yako."
+      isValid = false
+    }
+
+    if (description.length < 8) {
+      newErrors.description = "Andika maelezo mafupi ya duka lako."
+      isValid = false
+    }
+
+    const storeExists = vendors.some((item) => {
+      return (
+        item.id !== vendor.id &&
+        item.storeName?.trim().toLowerCase() === storeName.toLowerCase()
+      )
+    })
+
+    if (storeExists) {
+      newErrors.storeName = "Jina hili la duka tayari limeshatumika."
+      isValid = false
+    }
+
+    const phoneExists = vendors.some((item) => {
+      return (
+        item.id !== vendor.id &&
+        normalizePhone(item.whatsapp || "") === normalizedWhatsapp
+      )
+    })
+
+    if (phoneExists) {
+      newErrors.whatsapp = "Namba hii tayari imesajiliwa na duka jingine."
+      isValid = false
+    }
+
+    setErrors(newErrors)
+
+    return isValid
   }
 
   function handleSubmit(event) {
     event.preventDefault()
 
-    if (!vendor) {
-      return
-    }
+    if (!vendor) return
+    if (!validate()) return
 
     const finalCategory = getFinalCategory()
-
-    if (!finalCategory) {
-      setMessage({
-        type: "error",
-        text: "Chagua au andika aina ya biashara yako.",
-      })
-      return
-    }
+    const updatedAt = new Date().toISOString()
 
     const vendors = StorageService.getVendors()
+
+    let updatedVendor = null
 
     const updatedVendors = vendors.map((item) => {
       if (item.id !== vendor.id) {
         return item
       }
 
-      return {
+      updatedVendor = {
         ...item,
         ownerName: form.ownerName.trim(),
         storeName: form.storeName.trim(),
@@ -129,16 +227,28 @@ function VendorProfilePage() {
         location: form.location.trim(),
         category: finalCategory,
         description: form.description.trim(),
-        updatedAt: new Date().toISOString(),
+
+        // Muhimu:
+        // Vendor profile edit haigusi verification status.
+        // status, isVerified, verifiedAt, plan, productLimit na password vinabaki kama vilivyo.
+        updatedAt,
       }
+
+      return updatedVendor
     })
 
     StorageService.saveVendors(updatedVendors)
+
+    if (updatedVendor) {
+      setVendor(updatedVendor)
+    }
 
     setMessage({
       type: "success",
       text: "Taarifa za duka zimehifadhiwa kikamilifu.",
     })
+
+    setErrors(initialErrors)
   }
 
   if (!vendor) {
@@ -187,7 +297,8 @@ function VendorProfilePage() {
             </h1>
 
             <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-[var(--color-muted)]">
-              Angalia na rekebisha taarifa muhimu za duka lako.
+              Angalia na rekebisha taarifa muhimu za duka lako. Verification
+              status hubadilishwa na admin pekee.
             </p>
           </div>
 
@@ -269,7 +380,13 @@ function VendorProfilePage() {
                   Jina la mmiliki
                 </label>
 
-                <div className="mt-2 flex items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 transition focus-within:border-[var(--color-green)] focus-within:ring-2 focus-within:ring-[var(--color-green)]/20">
+                <div
+                  className={`mt-2 flex items-center gap-2 rounded-2xl border bg-[var(--color-bg)] px-4 py-3 transition focus-within:ring-2 focus-within:ring-[var(--color-green)]/20 ${
+                    errors.ownerName
+                      ? "border-red-400"
+                      : "border-[var(--color-border)] focus-within:border-[var(--color-green)]"
+                  }`}
+                >
                   <UserRound
                     size={18}
                     strokeWidth={2.5}
@@ -286,6 +403,12 @@ function VendorProfilePage() {
                     className="w-full bg-transparent text-sm font-semibold text-gray-800 outline-none placeholder:text-gray-400"
                   />
                 </div>
+
+                {errors.ownerName && (
+                  <p className="mt-1.5 text-xs font-semibold text-red-500">
+                    {errors.ownerName}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -296,7 +419,13 @@ function VendorProfilePage() {
                   Jina la duka
                 </label>
 
-                <div className="mt-2 flex items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 transition focus-within:border-[var(--color-green)] focus-within:ring-2 focus-within:ring-[var(--color-green)]/20">
+                <div
+                  className={`mt-2 flex items-center gap-2 rounded-2xl border bg-[var(--color-bg)] px-4 py-3 transition focus-within:ring-2 focus-within:ring-[var(--color-green)]/20 ${
+                    errors.storeName
+                      ? "border-red-400"
+                      : "border-[var(--color-border)] focus-within:border-[var(--color-green)]"
+                  }`}
+                >
                   <Store
                     size={18}
                     strokeWidth={2.5}
@@ -313,6 +442,12 @@ function VendorProfilePage() {
                     className="w-full bg-transparent text-sm font-semibold text-gray-800 outline-none placeholder:text-gray-400"
                   />
                 </div>
+
+                {errors.storeName && (
+                  <p className="mt-1.5 text-xs font-semibold text-red-500">
+                    {errors.storeName}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -320,10 +455,16 @@ function VendorProfilePage() {
                   htmlFor="whatsapp"
                   className="text-xs font-black text-gray-700"
                 >
-                  Namba ya simu
+                  Namba ya simu / WhatsApp
                 </label>
 
-                <div className="mt-2 flex items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 transition focus-within:border-[var(--color-green)] focus-within:ring-2 focus-within:ring-[var(--color-green)]/20">
+                <div
+                  className={`mt-2 flex items-center gap-2 rounded-2xl border bg-[var(--color-bg)] px-4 py-3 transition focus-within:ring-2 focus-within:ring-[var(--color-green)]/20 ${
+                    errors.whatsapp
+                      ? "border-red-400"
+                      : "border-[var(--color-border)] focus-within:border-[var(--color-green)]"
+                  }`}
+                >
                   <MessageCircle
                     size={18}
                     strokeWidth={2.5}
@@ -341,6 +482,12 @@ function VendorProfilePage() {
                     className="w-full bg-transparent text-sm font-semibold text-gray-800 outline-none placeholder:text-gray-400"
                   />
                 </div>
+
+                {errors.whatsapp && (
+                  <p className="mt-1.5 text-xs font-semibold text-red-500">
+                    {errors.whatsapp}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -351,7 +498,13 @@ function VendorProfilePage() {
                   Eneo / Location
                 </label>
 
-                <div className="mt-2 flex items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 transition focus-within:border-[var(--color-green)] focus-within:ring-2 focus-within:ring-[var(--color-green)]/20">
+                <div
+                  className={`mt-2 flex items-center gap-2 rounded-2xl border bg-[var(--color-bg)] px-4 py-3 transition focus-within:ring-2 focus-within:ring-[var(--color-green)]/20 ${
+                    errors.location
+                      ? "border-red-400"
+                      : "border-[var(--color-border)] focus-within:border-[var(--color-green)]"
+                  }`}
+                >
                   <MapPin
                     size={18}
                     strokeWidth={2.5}
@@ -368,6 +521,12 @@ function VendorProfilePage() {
                     className="w-full bg-transparent text-sm font-semibold text-gray-800 outline-none placeholder:text-gray-400"
                   />
                 </div>
+
+                {errors.location && (
+                  <p className="mt-1.5 text-xs font-semibold text-red-500">
+                    {errors.location}
+                  </p>
+                )}
               </div>
 
               <div className="md:col-span-2">
@@ -384,7 +543,11 @@ function VendorProfilePage() {
                   name="category"
                   value={form.category}
                   onChange={handleChange}
-                  className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition focus:border-[var(--color-green)] focus:ring-2 focus:ring-[var(--color-green)]/20"
+                  className={`mt-2 w-full rounded-2xl border bg-[var(--color-bg)] px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition focus:border-[var(--color-green)] focus:ring-2 focus:ring-[var(--color-green)]/20 ${
+                    errors.category
+                      ? "border-red-400"
+                      : "border-[var(--color-border)]"
+                  }`}
                 >
                   <option value="">Chagua aina ya biashara</option>
 
@@ -402,8 +565,18 @@ function VendorProfilePage() {
                     value={form.otherCategory}
                     onChange={handleChange}
                     placeholder="Andika aina ya biashara yako"
-                    className="mt-3 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-[var(--color-green)] focus:ring-2 focus:ring-[var(--color-green)]/20"
+                    className={`mt-3 w-full rounded-2xl border bg-[var(--color-bg)] px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-[var(--color-green)] focus:ring-2 focus:ring-[var(--color-green)]/20 ${
+                      errors.category
+                        ? "border-red-400"
+                        : "border-[var(--color-border)]"
+                    }`}
                   />
+                )}
+
+                {errors.category && (
+                  <p className="mt-1.5 text-xs font-semibold text-red-500">
+                    {errors.category}
+                  </p>
                 )}
               </div>
 
@@ -423,8 +596,18 @@ function VendorProfilePage() {
                   onChange={handleChange}
                   rows={4}
                   placeholder="Elezea duka lako kwa kifupi..."
-                  className="mt-2 w-full resize-none rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-[var(--color-green)] focus:ring-2 focus:ring-[var(--color-green)]/20"
+                  className={`mt-2 w-full resize-none rounded-2xl border bg-[var(--color-bg)] px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-[var(--color-green)] focus:ring-2 focus:ring-[var(--color-green)]/20 ${
+                    errors.description
+                      ? "border-red-400"
+                      : "border-[var(--color-border)]"
+                  }`}
                 />
+
+                {errors.description && (
+                  <p className="mt-1.5 text-xs font-semibold text-red-500">
+                    {errors.description}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -489,6 +672,11 @@ function VendorProfilePage() {
                   </p>
                 )}
               </div>
+
+              <p className="mt-5 rounded-2xl bg-[var(--color-bg)] p-4 text-xs font-semibold leading-5 text-[var(--color-muted)]">
+                Verification hubadilishwa na admin pekee. Mabadiliko ya profile
+                hayawezi kujiverify duka.
+              </p>
             </div>
 
             <div className="rounded-[2rem] border border-[var(--color-border)] bg-white p-5 shadow-sm">
@@ -533,7 +721,9 @@ function VendorProfilePage() {
                       strokeWidth={2.5}
                       className="text-[var(--color-green-dark)]"
                     />
-                    {form.whatsapp || "Namba ya simu"}
+                    {form.whatsapp
+                      ? "WhatsApp ipo tayari kwa oda"
+                      : "WhatsApp haijawekwa"}
                   </p>
                 </div>
               </div>

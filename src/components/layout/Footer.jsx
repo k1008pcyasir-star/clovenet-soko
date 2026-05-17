@@ -1,19 +1,41 @@
-import { useNavigate } from "react-router-dom"
+import { useLocation, useNavigate } from "react-router-dom"
 import {
+  FileText,
   HelpCircle,
   MessageCircle,
   ShieldCheck,
   Store,
+  ShoppingBag,
+  ShoppingCart,
 } from "lucide-react"
 
 import BrandLogo from "../brand/BrandLogo"
 
 function Footer() {
   const navigate = useNavigate()
+  const location = useLocation()
+
+  const goTo = (path) => {
+    const currentPath = `${location.pathname}${location.hash}`
+
+    // Kama user yupo tayari kwenye route hiyo hiyo,
+    // mpeleke juu instantly bila animation
+    if (currentPath === path || location.pathname === path) {
+      window.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: "auto",
+      })
+      return
+    }
+
+    navigate(path)
+  }
 
   return (
     <footer className="mt-8 bg-[var(--color-navy)] text-white">
       <div className="mx-auto grid max-w-7xl gap-8 px-5 py-10 sm:grid-cols-2 md:px-6 lg:grid-cols-4">
+        {/* Brand */}
         <div>
           <BrandLogo
             light
@@ -21,7 +43,7 @@ function Footer() {
             iconSize="md"
             textSize="lg"
             subtitle="WhatsApp-first marketplace"
-            onClick={() => navigate("/")}
+            onClick={() => goTo("/")}
           />
 
           <p className="mt-5 max-w-xs text-sm font-medium leading-7 text-slate-400">
@@ -31,7 +53,7 @@ function Footer() {
 
           <button
             type="button"
-            onClick={() => navigate("/support")}
+            onClick={() => goTo("/support")}
             className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl bg-[var(--color-green)] px-5 py-3 text-sm font-black text-[var(--color-navy)] transition hover:bg-[var(--color-green-dark)] hover:text-white"
           >
             <MessageCircle size={17} strokeWidth={2.7} />
@@ -39,90 +61,74 @@ function Footer() {
           </button>
         </div>
 
+        {/* Quick Links */}
         <div>
           <h4 className="text-lg font-black">Quick Links</h4>
 
           <div className="mt-5 space-y-3 text-sm font-semibold text-slate-400">
-            <button
-              type="button"
-              onClick={() => navigate("/soko")}
-              className="block transition hover:text-[var(--color-green)]"
-            >
+            <FooterButton onClick={() => goTo("/soko")}>
+              <ShoppingBag size={15} strokeWidth={2.6} />
               Angalia Bidhaa
-            </button>
+            </FooterButton>
 
-            <button
-              type="button"
-              onClick={() => navigate("/soko")}
-              className="block transition hover:text-[var(--color-green)]"
-            >
+            <FooterButton onClick={() => goTo("/soko")}>
+              <Store size={15} strokeWidth={2.6} />
               Maduka
-            </button>
+            </FooterButton>
 
-            <button
-              type="button"
-              onClick={() => navigate("/cart")}
-              className="block transition hover:text-[var(--color-green)]"
-            >
+            <FooterButton onClick={() => goTo("/cart")}>
+              <ShoppingCart size={15} strokeWidth={2.6} />
               Kikapu
-            </button>
+            </FooterButton>
+
+            <FooterButton onClick={() => goTo("/#why-us")}>
+              <ShieldCheck size={15} strokeWidth={2.6} />
+              Kwa Nini CloveNet Soko?
+            </FooterButton>
           </div>
         </div>
 
+        {/* Vendor Links */}
         <div>
           <h4 className="text-lg font-black">Kwa Wafanyabiashara</h4>
 
           <div className="mt-5 space-y-3 text-sm font-semibold text-slate-400">
-            <button
-              type="button"
-              onClick={() => navigate("/vendor/register")}
-              className="flex items-center gap-2 transition hover:text-[var(--color-green)]"
-            >
+            <FooterButton onClick={() => goTo("/vendor/register")}>
               <Store size={15} strokeWidth={2.6} />
               Fungua Duka Lako
-            </button>
+            </FooterButton>
 
-            <button
-              type="button"
-              onClick={() => navigate("/vendor/login")}
-              className="flex items-center gap-2 transition hover:text-[var(--color-green)]"
-            >
+            <FooterButton onClick={() => goTo("/vendor/login")}>
               <ShieldCheck size={15} strokeWidth={2.6} />
               Ingia Dukani
-            </button>
+            </FooterButton>
+
+            <FooterButton onClick={() => goTo("/support")}>
+              <HelpCircle size={15} strokeWidth={2.6} />
+              Mwongozo wa Wauzaji
+            </FooterButton>
           </div>
         </div>
 
+        {/* Support and Legal */}
         <div>
-          <h4 className="text-lg font-black">Support</h4>
+          <h4 className="text-lg font-black">Msaada na Taarifa</h4>
 
           <div className="mt-5 space-y-3 text-sm font-semibold text-slate-400">
-            <button
-              type="button"
-              onClick={() => navigate("/support")}
-              className="flex items-center gap-2 transition hover:text-[var(--color-green)]"
-            >
+            <FooterButton onClick={() => goTo("/support")}>
               <MessageCircle size={15} strokeWidth={2.6} />
               Mawasiliano
-            </button>
+            </FooterButton>
 
-            <button
-              type="button"
-              onClick={() => navigate("/support")}
-              className="flex items-center gap-2 transition hover:text-[var(--color-green)]"
-            >
-              <HelpCircle size={15} strokeWidth={2.6} />
-              Help Center
-            </button>
-
-            <button
-              type="button"
-              onClick={() => navigate("/support")}
-              className="flex items-center gap-2 transition hover:text-[var(--color-green)]"
-            >
+            <FooterButton onClick={() => goTo("/privacy")}>
               <ShieldCheck size={15} strokeWidth={2.6} />
               Privacy Policy
-            </button>
+            </FooterButton>
+
+            <FooterButton onClick={() => goTo("/terms")}>
+              <FileText size={15} strokeWidth={2.6} />
+              Masharti ya Matumizi
+            </FooterButton>
           </div>
         </div>
       </div>
@@ -131,6 +137,18 @@ function Footer() {
         © 2026 CloveNet Soko. All rights reserved.
       </div>
     </footer>
+  )
+}
+
+function FooterButton({ children, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-2 text-left transition hover:text-[var(--color-green)]"
+    >
+      {children}
+    </button>
   )
 }
 

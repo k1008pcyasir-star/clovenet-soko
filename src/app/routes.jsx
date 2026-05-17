@@ -4,7 +4,6 @@ import AdminLayout from "../components/layout/AdminLayout"
 import MarketplaceLayout from "../components/layout/MarketplaceLayout"
 import PublicLayout from "../components/layout/PublicLayout"
 import VendorLayout from "../components/layout/VendorLayout"
-import ComingSoonPage from "../components/ui/ComingSoonPage"
 
 import AdminAuthGuard from "../features/auth/components/AdminAuthGuard"
 import VendorAuthGuard from "../features/auth/components/VendorAuthGuard"
@@ -21,6 +20,10 @@ import StorePage from "../features/customer/pages/StorePage"
 import EntryPage from "../features/landing/pages/EntryPage"
 import ProductDetailPage from "../features/products/pages/ProductDetailPage"
 
+import SupportPage from "../features/support/pages/SupportPage"
+import PrivacyPage from "../features/legal/pages/PrivacyPage"
+import TermsPage from "../features/legal/pages/TermsPage"
+
 import VendorDashboardPage from "../features/vendor/pages/VendorDashboardPage"
 import VendorProductsPage from "../features/vendor/pages/VendorProductsPage"
 import VendorProfilePage from "../features/vendor/pages/VendorProfilePage"
@@ -34,7 +37,9 @@ function AppRoutes() {
         <Route path="/" element={<EntryPage />} />
         <Route path="/vendor/register" element={<VendorRegisterPage />} />
         <Route path="/vendor/login" element={<VendorLoginPage />} />
-        <Route path="/support" element={<ComingSoonPage title="Msaada" />} />
+        <Route path="/support" element={<SupportPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
       </Route>
 
       {/* Marketplace */}

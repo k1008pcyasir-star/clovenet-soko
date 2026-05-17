@@ -1,14 +1,51 @@
 import { useEffect, useState } from "react"
 import { ArrowRight, Download, Share, X } from "lucide-react"
 
-const INSTALL_DISMISSED_KEY = "clovenet_soko_install_dismissed"
+const INSTALL_DISMISSED_KEY = "clovenet_soko_install_dismissed_until"
+const DISMISS_HOURS = 2
+const INSTALLED_HIDE_HOURS = 24 * 365
+
+function getDismissUntil() {
+  try {
+    return Number(localStorage.getItem(INSTALL_DISMISSED_KEY) || 0)
+  } catch {
+    return 0
+  }
+}
+
+function setDismissForHours(hours) {
+  try {
+    const dismissUntil = Date.now() + hours * 60 * 60 * 1000
+    localStorage.setItem(INSTALL_DISMISSED_KEY, String(dismissUntil))
+  } catch {
+    // Ignore localStorage errors
+  }
+}
+
+function isDismissed() {
+  const dismissUntil = getDismissUntil()
+  return Boolean(dismissUntil && Date.now() < dismissUntil)
+}
 
 function isIOSDevice() {
-  return /iPad|iPhone|iPod/.test(window.navigator.userAgent) && !window.MSStream
+  const userAgent = window.navigator.userAgent
+
+  return (
+    /iPad|iPhone|iPod/.test(userAgent) ||
+    (userAgent.includes("Mac") && "ontouchend" in document)
+  )
 }
 
 function isSafariBrowser() {
-  return /^((?!chrome|android).)*safari/i.test(window.navigator.userAgent)
+  const userAgent = window.navigator.userAgent.toLowerCase()
+
+  return (
+    userAgent.includes("safari") &&
+    !userAgent.includes("chrome") &&
+    !userAgent.includes("crios") &&
+    !userAgent.includes("fxios") &&
+    !userAgent.includes("android")
+  )
 }
 
 function isStandaloneMode() {
@@ -27,13 +64,11 @@ function InstallPrompt() {
   useEffect(() => {
     if (isStandaloneMode()) {
       setIsInstalled(true)
-      return
+      return undefined
     }
 
-    const dismissed = localStorage.getItem(INSTALL_DISMISSED_KEY)
-
-    if (dismissed === "true") {
-      return
+    if (isDismissed()) {
+      return undefined
     }
 
     const isIOSSafari = isIOSDevice() && isSafariBrowser()
@@ -60,7 +95,7 @@ function InstallPrompt() {
       setIsInstalled(true)
       setIsVisible(false)
       setDeferredPrompt(null)
-      localStorage.setItem(INSTALL_DISMISSED_KEY, "true")
+      setDismissForHours(INSTALLED_HIDE_HOURS)
     }
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
@@ -76,16 +111,16 @@ function InstallPrompt() {
   }, [])
 
   async function handleInstall() {
-    if (!deferredPrompt) {
-      return
-    }
+    if (!deferredPrompt) return
 
     deferredPrompt.prompt()
 
     const { outcome } = await deferredPrompt.userChoice
 
     if (outcome === "accepted") {
-      localStorage.setItem(INSTALL_DISMISSED_KEY, "true")
+      setDismissForHours(INSTALLED_HIDE_HOURS)
+    } else {
+      setDismissForHours(DISMISS_HOURS)
     }
 
     setDeferredPrompt(null)
@@ -93,7 +128,7 @@ function InstallPrompt() {
   }
 
   function handleDismiss() {
-    localStorage.setItem(INSTALL_DISMISSED_KEY, "true")
+    setDismissForHours(DISMISS_HOURS)
     setIsVisible(false)
     setShowIOSGuide(false)
   }
@@ -126,7 +161,7 @@ function InstallPrompt() {
 
             <div>
               <h3 className="text-sm font-black text-gray-950">
-                Install CloveNet Soko
+                Sakinisha CloveNet Soko
               </h3>
 
               <p className="mt-1 text-xs font-semibold leading-5 text-[var(--color-muted)]">
@@ -200,7 +235,7 @@ function InstallPrompt() {
 
           <div>
             <h3 className="text-sm font-black text-gray-950">
-              Install CloveNet Soko
+              Sakinisha CloveNet Soko
             </h3>
 
             <p className="mt-1 text-xs font-semibold leading-5 text-[var(--color-muted)]">
@@ -216,7 +251,7 @@ function InstallPrompt() {
           className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--color-green)] px-4 py-3 text-sm font-black text-[var(--color-navy)] transition hover:bg-[var(--color-green-dark)] hover:text-white"
         >
           <Download size={17} strokeWidth={2.7} />
-          Install App
+          Sakinisha App
         </button>
       </div>
     </div>

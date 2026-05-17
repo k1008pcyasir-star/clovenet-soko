@@ -1,10 +1,11 @@
 import { useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import {
   ArrowLeft,
   ArrowRight,
   Eye,
   EyeOff,
+  HelpCircle,
   Lock,
   MessageCircle,
   ShieldCheck,
@@ -21,6 +22,7 @@ const initialForm = {
 
 function VendorLoginPage() {
   const navigate = useNavigate()
+
   const [form, setForm] = useState(initialForm)
   const [error, setError] = useState("")
   const [pendingVendor, setPendingVendor] = useState(null)
@@ -44,9 +46,9 @@ function VendorLoginPage() {
     const phone = normalizePhone(form.whatsapp)
     const vendors = StorageService.getVendors()
 
-    const vendor = vendors.find(
-      (item) => normalizePhone(item.whatsapp) === phone
-    )
+    const vendor = vendors.find((item) => {
+      return normalizePhone(item.whatsapp || "") === phone
+    })
 
     if (!vendor || vendor.password !== form.password) {
       setError("Namba ya simu au neno la siri si sahihi.")
@@ -67,7 +69,17 @@ function VendorLoginPage() {
       <section className="min-h-screen bg-[var(--color-bg)] px-4 py-6 text-[var(--color-text)] md:px-6">
         <div className="mx-auto flex min-h-[calc(100vh-3rem)] max-w-3xl items-center justify-center">
           <div className="w-full rounded-[2rem] border border-[var(--color-border)] bg-white p-6 text-center shadow-sm md:p-10">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[1.5rem] bg-[var(--color-green-soft)] text-[var(--color-green-dark)]">
+            <div className="flex justify-center">
+              <BrandLogo
+                title="CloveNet Soko"
+                subtitle="Vendor Login"
+                showSubtitle
+                iconSize="lg"
+                textSize="lg"
+              />
+            </div>
+
+            <div className="mx-auto mt-6 flex h-16 w-16 items-center justify-center rounded-[1.5rem] bg-[var(--color-green-soft)] text-[var(--color-green-dark)]">
               <ShieldCheck size={32} strokeWidth={2.5} />
             </div>
 
@@ -85,17 +97,22 @@ function VendorLoginPage() {
             </p>
 
             <div className="mx-auto mt-6 max-w-sm rounded-2xl bg-[var(--color-bg)] p-4 text-left">
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-gray-400">
-                Status
-              </p>
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-green-soft)] text-[var(--color-green-dark)]">
+                  <ShieldCheck size={18} strokeWidth={2.6} />
+                </div>
 
-              <p className="mt-2 text-sm font-black text-[var(--color-navy)]">
-                Pending Verification
-              </p>
+                <div>
+                  <p className="text-sm font-black text-gray-950">
+                    Status: Pending Verification
+                  </p>
 
-              <p className="mt-2 text-xs font-semibold leading-5 text-[var(--color-muted)]">
-                Tafadhali subiri approval kabla ya kuingia kwenye dashboard.
-              </p>
+                  <p className="mt-1 text-xs font-semibold leading-5 text-[var(--color-muted)]">
+                    Tafadhali subiri approval kabla ya kuingia kwenye dashboard.
+                    Kama unaona imechelewa, unaweza kuwasiliana na support.
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
@@ -109,6 +126,15 @@ function VendorLoginPage() {
               >
                 Jaribu Akaunti Nyingine
                 <ArrowRight size={16} strokeWidth={2.7} />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigate("/support")}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[var(--color-border)] bg-white px-6 py-3 text-sm font-black text-gray-700 transition hover:bg-[var(--color-bg)]"
+              >
+                <HelpCircle size={16} strokeWidth={2.7} />
+                Wasiliana Support
               </button>
 
               <button
@@ -147,18 +173,40 @@ function VendorLoginPage() {
               <div className="flex justify-center">
                 <BrandLogo
                   title="CloveNet Soko"
+                  subtitle="Vendor Login"
+                  showSubtitle
                   iconSize="lg"
                   textSize="lg"
                 />
               </div>
 
               <h1 className="mt-7 text-2xl font-black leading-tight text-gray-950">
-                Karibu Tena Kwenye Duka Lako!
+                Ingia kwenye duka lako
               </h1>
 
-              <p className="mt-2 text-sm font-semibold leading-6 text-[var(--color-muted)]">
-                Ingia to access bidhaa zako.
+              <p className="mx-auto mt-2 max-w-sm text-sm font-semibold leading-6 text-[var(--color-muted)]">
+                Tumia namba ya WhatsApp na neno la siri ulilotumia wakati wa
+                kusajili duka.
               </p>
+            </div>
+
+            <div className="mt-6 rounded-2xl bg-[var(--color-green-soft)] p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[var(--color-green-dark)]">
+                  <ShieldCheck size={18} strokeWidth={2.6} />
+                </div>
+
+                <div>
+                  <p className="text-sm font-black text-[var(--color-green-dark)]">
+                    Vendor dashboard
+                  </p>
+
+                  <p className="mt-1 text-xs font-semibold leading-5 text-[var(--color-green-dark)]">
+                    Akaunti iliyohakikiwa itaingia moja kwa moja kwenye dashboard
+                    ya kusimamia bidhaa na taarifa za duka.
+                  </p>
+                </div>
+              </div>
             </div>
 
             {error && (
@@ -175,10 +223,16 @@ function VendorLoginPage() {
                   htmlFor="whatsapp"
                   className="text-xs font-black text-gray-700"
                 >
-                  Namba ya Simu
+                  Namba ya simu / WhatsApp
                 </label>
 
-                <div className="mt-2 flex items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 transition focus-within:border-[var(--color-green)] focus-within:ring-2 focus-within:ring-[var(--color-green)]/20">
+                <div
+                  className={`mt-2 flex items-center gap-2 rounded-2xl border bg-[var(--color-bg)] px-4 py-3 transition focus-within:ring-2 focus-within:ring-[var(--color-green)]/20 ${
+                    error
+                      ? "border-red-300"
+                      : "border-[var(--color-border)] focus-within:border-[var(--color-green)]"
+                  }`}
+                >
                   <MessageCircle
                     size={18}
                     strokeWidth={2.5}
@@ -192,7 +246,7 @@ function VendorLoginPage() {
                     name="whatsapp"
                     value={form.whatsapp}
                     onChange={handleChange}
-                    placeholder="Andika namba ya simu"
+                    placeholder="+255700000000"
                     className="w-full bg-transparent text-sm font-semibold text-gray-800 outline-none placeholder:text-gray-400"
                   />
                 </div>
@@ -203,10 +257,16 @@ function VendorLoginPage() {
                   htmlFor="password"
                   className="text-xs font-black text-gray-700"
                 >
-                  Neno la Siri
+                  Neno la siri
                 </label>
 
-                <div className="mt-2 flex items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 transition focus-within:border-[var(--color-green)] focus-within:ring-2 focus-within:ring-[var(--color-green)]/20">
+                <div
+                  className={`mt-2 flex items-center gap-2 rounded-2xl border bg-[var(--color-bg)] px-4 py-3 transition focus-within:ring-2 focus-within:ring-[var(--color-green)]/20 ${
+                    error
+                      ? "border-red-300"
+                      : "border-[var(--color-border)] focus-within:border-[var(--color-green)]"
+                  }`}
+                >
                   <Lock
                     size={18}
                     strokeWidth={2.5}
@@ -247,12 +307,12 @@ function VendorLoginPage() {
                     type="button"
                     onClick={() =>
                       setError(
-                        "Forgot password bado haijawezeshwa. Wasiliana na admin wa CloveNet Soko."
+                        "Forgot password bado haijawezeshwa. Tafadhali wasiliana na support ya CloveNet Soko."
                       )
                     }
                     className="text-xs font-black text-[var(--color-green-dark)] hover:underline"
                   >
-                    Forgot password?
+                    Umesahau neno la siri?
                   </button>
                 </div>
               </div>
@@ -279,6 +339,17 @@ function VendorLoginPage() {
                 Fungua duka
               </button>
             </div>
+
+            <p className="mt-5 text-center text-[11px] font-semibold leading-5 text-[var(--color-muted)]">
+              Unahitaji msaada?{" "}
+              <Link
+                to="/support"
+                className="font-black text-[var(--color-green-dark)] hover:underline"
+              >
+                Wasiliana na Support
+              </Link>
+              .
+            </p>
           </form>
         </div>
       </div>

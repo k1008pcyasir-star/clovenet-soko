@@ -1,4 +1,4 @@
-import { useMemo } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import {
   Home,
@@ -12,8 +12,8 @@ import { StorageService } from "../../services/storageService"
 
 const navItems = [
   {
-    key: "home",
-    label: "Home",
+    key: "soko",
+    label: "Soko",
     icon: Home,
     path: "/soko",
   },
@@ -43,14 +43,49 @@ const navItems = [
   },
 ]
 
-function MobileBottomNav({ active = "home" }) {
+function getCartCount() {
+  const cart = StorageService.getCart()
+
+  if (!Array.isArray(cart)) {
+    return 0
+  }
+
+  return cart.reduce((total, item) => {
+    return total + Number(item.quantity || 0)
+  }, 0)
+}
+
+function MobileBottomNav({ active = "soko" }) {
   const navigate = useNavigate()
+  const [cartCount, setCartCount] = useState(() => getCartCount())
 
-  const cartCount = useMemo(() => {
-    const cart = StorageService.getCart()
+  useEffect(() => {
+    function updateCartCount() {
+      setCartCount(getCartCount())
+    }
 
-    return cart.reduce((total, item) => total + Number(item.quantity || 0), 0)
+    updateCartCount()
+
+    window.addEventListener("storage", updateCartCount)
+    window.addEventListener("focus", updateCartCount)
+    window.addEventListener("visibilitychange", updateCartCount)
+    window.addEventListener("clovenet-cart-updated", updateCartCount)
+
+    const intervalId = window.setInterval(updateCartCount, 1000)
+
+    return () => {
+      window.removeEventListener("storage", updateCartCount)
+      window.removeEventListener("focus", updateCartCount)
+      window.removeEventListener("visibilitychange", updateCartCount)
+      window.removeEventListener("clovenet-cart-updated", updateCartCount)
+      window.clearInterval(intervalId)
+    }
   }, [])
+
+  function handleNavigate(path) {
+    setCartCount(getCartCount())
+    navigate(path)
+  }
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--color-border)] bg-white px-3 py-2 shadow-[0_-8px_24px_rgba(0,0,0,0.05)] md:hidden">
@@ -64,7 +99,7 @@ function MobileBottomNav({ active = "home" }) {
             <button
               key={item.key}
               type="button"
-              onClick={() => navigate(item.path)}
+              onClick={() => handleNavigate(item.path)}
               className={`relative rounded-2xl px-2 py-2 text-xs font-black transition ${
                 isActive
                   ? "bg-[var(--color-green-soft)] text-[var(--color-green-dark)]"

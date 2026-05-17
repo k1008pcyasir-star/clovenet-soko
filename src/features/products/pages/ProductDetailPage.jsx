@@ -41,6 +41,7 @@ function ProductDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const hasTrackedView = useRef(false)
+
   const [added, setAdded] = useState(false)
   const [activeImageIndex, setActiveImageIndex] = useState(0)
 
@@ -67,6 +68,7 @@ function ProductDetailPage() {
 
   useEffect(() => {
     setActiveImageIndex(0)
+    hasTrackedView.current = false
   }, [id])
 
   useEffect(() => {
@@ -85,6 +87,7 @@ function ProductDetailPage() {
     if (!product) return
 
     StorageService.addToCart(product)
+
     setAdded(true)
 
     window.setTimeout(() => {
@@ -123,6 +126,29 @@ function ProductDetailPage() {
   if (!product) {
     return (
       <section className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)]">
+        <header className="sticky top-0 z-30 border-b border-[var(--color-border)] bg-[var(--color-bg)]/95 backdrop-blur-md">
+          <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 md:px-6">
+            <button
+              type="button"
+              onClick={() => navigate("/soko")}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-navy)] text-white shadow-sm transition hover:bg-[var(--color-navy-soft)]"
+              aria-label="Rudi sokoni"
+            >
+              <ArrowLeft size={22} strokeWidth={2.7} />
+            </button>
+
+            <div className="min-w-0">
+              <p className="truncate text-sm font-black leading-tight text-gray-950 md:text-base">
+                Bidhaa haijapatikana
+              </p>
+
+              <p className="truncate text-[10px] font-semibold text-[var(--color-muted)]">
+                CloveNet Soko
+              </p>
+            </div>
+          </div>
+        </header>
+
         <main className="mx-auto max-w-4xl px-4 py-8 pb-28 md:px-6 md:pb-8">
           <div className="rounded-[2rem] border border-[var(--color-border)] bg-white p-6 shadow-sm">
             <EmptyState
@@ -142,13 +168,15 @@ function ProductDetailPage() {
           </div>
         </main>
 
-        <MobileBottomNav active="home" />
+        <MobileBottomNav active="soko" />
       </section>
     )
   }
 
   const hasDiscount = Number(product.oldPrice) > Number(product.price)
   const hasMultipleImages = productImages.length > 1
+  const vendorIsVerified =
+    product.vendor?.status === "verified" || product.vendor?.isVerified
 
   return (
     <section className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)]">
@@ -368,8 +396,7 @@ function ProductDetailPage() {
                   </button>
                 </div>
 
-                {(product.vendor?.status === "verified" ||
-                  product.vendor?.isVerified) && (
+                {vendorIsVerified && (
                   <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[var(--color-green-soft)] px-3 py-1 text-[10px] font-black text-[var(--color-green-dark)]">
                     <ShieldCheck size={12} strokeWidth={2.7} />
                     Verified
@@ -393,7 +420,9 @@ function ProductDetailPage() {
                     strokeWidth={2.5}
                     className="shrink-0 text-[var(--color-green-dark)]"
                   />
-                  {product.vendor?.whatsapp || "WhatsApp haijawekwa"}
+                  {product.vendor?.whatsapp
+                    ? "WhatsApp ipo tayari kwa oda"
+                    : "WhatsApp haijawekwa"}
                 </p>
               </div>
 
@@ -452,7 +481,7 @@ function ProductDetailPage() {
         </div>
       </main>
 
-      <MobileBottomNav active="home" />
+      <MobileBottomNav active="soko" />
     </section>
   )
 }

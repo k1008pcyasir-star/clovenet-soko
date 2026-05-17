@@ -8,7 +8,6 @@ import {
   Minus,
   Package,
   Plus,
-  ShoppingBag,
   ShoppingCart,
   Store,
   Trash2,
@@ -126,6 +125,29 @@ function CartPage() {
   if (cartItems.length === 0) {
     return (
       <section className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)]">
+        <header className="sticky top-0 z-30 border-b border-[var(--color-border)] bg-[var(--color-bg)]/95 backdrop-blur-md">
+          <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 md:px-6">
+            <button
+              type="button"
+              onClick={() => navigate("/soko")}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-navy)] text-white shadow-sm transition hover:bg-[var(--color-navy-soft)]"
+              aria-label="Rudi sokoni"
+            >
+              <ArrowLeft size={22} strokeWidth={2.7} />
+            </button>
+
+            <div className="min-w-0">
+              <p className="truncate text-sm font-black leading-tight text-gray-950 md:text-base">
+                Kikapu Changu
+              </p>
+
+              <p className="truncate text-[10px] font-semibold text-[var(--color-muted)]">
+                Hakuna bidhaa kwa sasa
+              </p>
+            </div>
+          </div>
+        </header>
+
         <main className="mx-auto max-w-4xl px-4 py-8 pb-28 md:px-6 md:pb-8">
           <div className="rounded-[2rem] border border-[var(--color-border)] bg-white p-6 shadow-sm">
             <EmptyState
@@ -218,7 +240,7 @@ function CartPage() {
                           </h2>
 
                           <p className="mt-0.5 truncate text-xs font-semibold text-[var(--color-muted)]">
-                            WhatsApp: {group.vendor.whatsapp || "Haijawekwa"}
+                            Oda itaenda WhatsApp kwa vendor
                           </p>
                         </div>
                       </div>
