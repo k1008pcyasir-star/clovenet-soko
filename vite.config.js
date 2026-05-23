@@ -17,7 +17,7 @@ export default defineConfig({
       ],
       manifest: {
         name: "CloveNet Soko",
-        short_name: "Soko",
+        short_name: "CloveNet Soko",
         description: "WhatsApp-first marketplace for Tanzania.",
         theme_color: "#07131f",
         background_color: "#f8faff",

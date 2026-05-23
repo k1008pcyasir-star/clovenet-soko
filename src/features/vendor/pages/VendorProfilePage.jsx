@@ -1,10 +1,11 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
   Clock,
+  Loader2,
   LockKeyhole,
   MapPin,
   MessageCircle,
@@ -15,8 +16,8 @@ import {
   XCircle,
 } from "lucide-react"
 
-import { StorageService } from "../../../services/storageService"
-import { formatDate, normalizePhone } from "../../../utils/formatters"
+import { vendorApiService } from "../../../services/vendorApiService"
+import { formatDate } from "../../../utils/formatters"
 
 const BUSINESS_CATEGORIES = [
   { label: "💻 Laptop & Computer", value: "Laptop & Computer" },
@@ -48,13 +49,6 @@ const initialErrors = {
   description: "",
 }
 
-function getCurrentVendor() {
-  const vendorId = StorageService.getCurrentVendorId()
-  const vendors = StorageService.getVendors()
-
-  return vendors.find((item) => item.id === vendorId) || null
-}
-
 function getCategoryFormValue(category) {
   const exists = BUSINESS_CATEGORIES.some((item) => item.value === category)
 
@@ -65,16 +59,18 @@ function getCategoryFormValue(category) {
 }
 
 function buildInitialForm(vendor) {
+  const ownerName = vendor?.ownerName || vendor?.owner_name || ""
+  const storeName = vendor?.storeName || vendor?.store_name || ""
+  const category = vendor?.category || ""
+
   return {
-    ownerName: vendor?.ownerName || "",
-    storeName: vendor?.storeName || "",
+    ownerName,
+    storeName,
     whatsapp: vendor?.whatsapp || "",
     location: vendor?.location || "",
-    category: getCategoryFormValue(vendor?.category || ""),
+    category: getCategoryFormValue(category),
     otherCategory:
-      vendor?.category && getCategoryFormValue(vendor.category) === "Other"
-        ? vendor.category
-        : "",
+      category && getCategoryFormValue(category) === "Other" ? category : "",
     description: vendor?.description || "",
   }
 }
@@ -82,13 +78,52 @@ function buildInitialForm(vendor) {
 function VendorProfilePage() {
   const navigate = useNavigate()
 
-  const [vendor, setVendor] = useState(() => getCurrentVendor())
-  const [form, setForm] = useState(() => buildInitialForm(getCurrentVendor()))
+  const [vendor, setVendor] = useState(() => vendorApiService.getCurrentVendor())
+  const [form, setForm] = useState(() =>
+    buildInitialForm(vendorApiService.getCurrentVendor())
+  )
+
   const [message, setMessage] = useState(initialMessage)
   const [errors, setErrors] = useState(initialErrors)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
 
   const isVerified = vendor?.status === "verified" || vendor?.isVerified
   const isSuspended = vendor?.status === "suspended"
+
+  useEffect(() => {
+    loadVendorProfile()
+  }, [])
+
+  async function loadVendorProfile() {
+    try {
+      setIsLoading(true)
+      setMessage(initialMessage)
+
+      const freshVendor = await vendorApiService.getVendorProfile()
+
+      if (freshVendor) {
+        setVendor(freshVendor)
+        setForm(buildInitialForm(freshVendor))
+      }
+    } catch (error) {
+      const savedVendor = vendorApiService.getCurrentVendor()
+
+      if (savedVendor) {
+        setVendor(savedVendor)
+        setForm(buildInitialForm(savedVendor))
+      }
+
+      setMessage({
+        type: "error",
+        text:
+          error?.message ||
+          "Imeshindikana kupata profile kutoka database. Jaribu tena.",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   function getFinalCategory() {
     if (form.category === "Other") {
@@ -130,7 +165,6 @@ function VendorProfilePage() {
     if (!vendor) return false
 
     const newErrors = { ...initialErrors }
-    const vendors = StorageService.getVendors()
 
     const ownerName = form.ownerName.trim()
     const storeName = form.storeName.trim()
@@ -138,7 +172,6 @@ function VendorProfilePage() {
     const description = form.description.trim()
     const finalCategory = getFinalCategory()
     const digits = form.whatsapp.replace(/\D/g, "")
-    const normalizedWhatsapp = normalizePhone(form.whatsapp)
 
     let isValid = true
 
@@ -172,83 +205,75 @@ function VendorProfilePage() {
       isValid = false
     }
 
-    const storeExists = vendors.some((item) => {
-      return (
-        item.id !== vendor.id &&
-        item.storeName?.trim().toLowerCase() === storeName.toLowerCase()
-      )
-    })
-
-    if (storeExists) {
-      newErrors.storeName = "Jina hili la duka tayari limeshatumika."
-      isValid = false
-    }
-
-    const phoneExists = vendors.some((item) => {
-      return (
-        item.id !== vendor.id &&
-        normalizePhone(item.whatsapp || "") === normalizedWhatsapp
-      )
-    })
-
-    if (phoneExists) {
-      newErrors.whatsapp = "Namba hii tayari imesajiliwa na duka jingine."
-      isValid = false
-    }
-
     setErrors(newErrors)
 
     return isValid
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault()
 
     if (!vendor) return
     if (!validate()) return
 
-    const finalCategory = getFinalCategory()
-    const updatedAt = new Date().toISOString()
+    try {
+      setIsSaving(true)
+      setMessage(initialMessage)
 
-    const vendors = StorageService.getVendors()
-
-    let updatedVendor = null
-
-    const updatedVendors = vendors.map((item) => {
-      if (item.id !== vendor.id) {
-        return item
-      }
-
-      updatedVendor = {
-        ...item,
+      const response = await vendorApiService.updateVendorProfile({
         ownerName: form.ownerName.trim(),
         storeName: form.storeName.trim(),
-        whatsapp: normalizePhone(form.whatsapp),
+        whatsapp: form.whatsapp.trim(),
         location: form.location.trim(),
-        category: finalCategory,
+        category: getFinalCategory(),
         description: form.description.trim(),
+      })
 
-        // Muhimu:
-        // Vendor profile edit haigusi verification status.
-        // status, isVerified, verifiedAt, plan, productLimit na password vinabaki kama vilivyo.
-        updatedAt,
+      const updatedVendor = response?.vendor
+
+      if (updatedVendor) {
+        setVendor(updatedVendor)
+        setForm(buildInitialForm(updatedVendor))
       }
 
-      return updatedVendor
-    })
+      setMessage({
+        type: "success",
+        text: "Profile ya duka imehifadhiwa kikamilifu kwenye database.",
+      })
 
-    StorageService.saveVendors(updatedVendors)
-
-    if (updatedVendor) {
-      setVendor(updatedVendor)
+      setErrors(initialErrors)
+    } catch (error) {
+      setMessage({
+        type: "error",
+        text:
+          error?.message ||
+          "Imeshindikana kuhifadhi profile ya duka. Jaribu tena.",
+      })
+    } finally {
+      setIsSaving(false)
     }
+  }
 
-    setMessage({
-      type: "success",
-      text: "Taarifa za duka zimehifadhiwa kikamilifu.",
-    })
+  if (isLoading && !vendor) {
+    return (
+      <section className="min-h-screen bg-[var(--color-bg)] px-4 py-8 text-[var(--color-text)] md:px-6">
+        <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-3xl items-center justify-center">
+          <div className="w-full rounded-[2rem] border border-[var(--color-border)] bg-white p-6 text-center shadow-sm md:p-10">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[1.5rem] bg-[var(--color-green-soft)] text-[var(--color-green-dark)]">
+              <Loader2 size={32} strokeWidth={2.5} className="animate-spin" />
+            </div>
 
-    setErrors(initialErrors)
+            <h1 className="mt-5 text-2xl font-black text-gray-950">
+              Inapakia profile...
+            </h1>
+
+            <p className="mx-auto mt-3 max-w-md text-sm font-semibold leading-6 text-[var(--color-muted)]">
+              Tafadhali subiri wakati tunachukua taarifa za duka kutoka database.
+            </p>
+          </div>
+        </div>
+      </section>
+    )
   }
 
   if (!vendor) {
@@ -613,10 +638,24 @@ function VendorProfilePage() {
 
             <button
               type="submit"
-              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--color-green)] px-5 py-3 text-sm font-black text-[var(--color-navy)] transition hover:bg-[var(--color-green-dark)] hover:text-white"
+              disabled={isSaving}
+              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--color-green)] px-5 py-3 text-sm font-black text-[var(--color-navy)] transition hover:bg-[var(--color-green-dark)] hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
             >
-              <Save size={16} strokeWidth={2.7} />
-              Hifadhi Mabadiliko
+              {isSaving ? (
+                <>
+                  <Loader2
+                    size={16}
+                    strokeWidth={2.7}
+                    className="animate-spin"
+                  />
+                  Inahifadhi...
+                </>
+              ) : (
+                <>
+                  <Save size={16} strokeWidth={2.7} />
+                  Hifadhi Mabadiliko
+                </>
+              )}
             </button>
           </form>
 
@@ -655,20 +694,20 @@ function VendorProfilePage() {
               <div className="mt-5 space-y-3 text-xs font-semibold text-gray-600">
                 <p>
                   <span className="font-black text-gray-950">Joined:</span>{" "}
-                  {formatDate(vendor.createdAt)}
+                  {formatDate(vendor.createdAt || vendor.created_at)}
                 </p>
 
-                {vendor.verifiedAt && (
+                {(vendor.verifiedAt || vendor.verified_at) && (
                   <p>
                     <span className="font-black text-gray-950">Verified:</span>{" "}
-                    {formatDate(vendor.verifiedAt)}
+                    {formatDate(vendor.verifiedAt || vendor.verified_at)}
                   </p>
                 )}
 
-                {vendor.updatedAt && (
+                {(vendor.updatedAt || vendor.updated_at) && (
                   <p>
                     <span className="font-black text-gray-950">Updated:</span>{" "}
-                    {formatDate(vendor.updatedAt)}
+                    {formatDate(vendor.updatedAt || vendor.updated_at)}
                   </p>
                 )}
               </div>

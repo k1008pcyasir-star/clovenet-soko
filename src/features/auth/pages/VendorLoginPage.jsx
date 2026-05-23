@@ -6,27 +6,46 @@ import {
   Eye,
   EyeOff,
   HelpCircle,
+  KeyRound,
   Lock,
   MessageCircle,
   ShieldCheck,
 } from "lucide-react"
 
 import BrandLogo from "../../../components/brand/BrandLogo"
-import { StorageService } from "../../../services/storageService"
-import { normalizePhone } from "../../../utils/formatters"
+import { vendorApiService } from "../../../services/vendorApiService"
 
 const initialForm = {
   whatsapp: "",
   password: "",
 }
 
+const initialResetForm = {
+  whatsapp: "",
+  otpCode: "",
+  newPassword: "",
+  confirmPassword: "",
+}
+
 function VendorLoginPage() {
   const navigate = useNavigate()
 
   const [form, setForm] = useState(initialForm)
+  const [resetForm, setResetForm] = useState(initialResetForm)
+
   const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
   const [pendingVendor, setPendingVendor] = useState(null)
+
+  const [mode, setMode] = useState("login")
+  const [resetStep, setResetStep] = useState("request")
+
   const [showPassword, setShowPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isResetSubmitting, setIsResetSubmitting] = useState(false)
 
   function handleChange(event) {
     const { name, value } = event.target
@@ -37,31 +56,161 @@ function VendorLoginPage() {
     }))
 
     setError("")
+    setSuccess("")
     setPendingVendor(null)
   }
 
-  function handleSubmit(event) {
+  function handleResetChange(event) {
+    const { name, value } = event.target
+
+    setResetForm((current) => ({
+      ...current,
+      [name]: value,
+    }))
+
+    setError("")
+    setSuccess("")
+  }
+
+  function switchToLogin() {
+    setMode("login")
+    setResetStep("request")
+    setResetForm(initialResetForm)
+    setError("")
+    setSuccess("")
+  }
+
+  function switchToForgotPassword() {
+    setMode("forgot")
+    setResetStep("request")
+    setResetForm((current) => ({
+      ...current,
+      whatsapp: form.whatsapp || current.whatsapp,
+    }))
+    setError("")
+    setSuccess("")
+  }
+
+  async function handleSubmit(event) {
     event.preventDefault()
 
-    const phone = normalizePhone(form.whatsapp)
-    const vendors = StorageService.getVendors()
+    setError("")
+    setSuccess("")
+    setPendingVendor(null)
+    setIsSubmitting(true)
 
-    const vendor = vendors.find((item) => {
-      return normalizePhone(item.whatsapp || "") === phone
-    })
+    try {
+      const response = await vendorApiService.loginVendor({
+        whatsapp: form.whatsapp,
+        password: form.password,
+      })
 
-    if (!vendor || vendor.password !== form.password) {
-      setError("Namba ya simu au neno la siri si sahihi.")
+      const vendor = response?.vendor || response?.data?.vendor
+      const token = response?.token || response?.data?.token
+
+      if (!vendor || !token) {
+        setError("Login imefanikiwa lakini taarifa za akaunti hazijakamilika.")
+        return
+      }
+
+      if (vendor.status !== "verified") {
+        setPendingVendor(vendor)
+        return
+      }
+
+      navigate("/vendor/dashboard")
+    } catch (error) {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Namba ya simu au neno la siri si sahihi."
+
+      setError(message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  async function handleRequestOtp(event) {
+    event.preventDefault()
+
+    if (!resetForm.whatsapp.trim()) {
+      setError("Weka namba ya WhatsApp kwanza.")
       return
     }
 
-    if (vendor.status !== "verified" && !vendor.isVerified) {
-      setPendingVendor(vendor)
+    try {
+      setIsResetSubmitting(true)
+      setError("")
+      setSuccess("")
+
+      await vendorApiService.requestPasswordReset({
+        whatsapp: resetForm.whatsapp,
+      })
+
+      setSuccess(
+        "OTP imetengenezwa. Kama hujaipokea automatic, wasiliana na support au super admin."
+      )
+      setResetStep("reset")
+    } catch (error) {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Imeshindikana kutengeneza OTP."
+
+      setError(message)
+    } finally {
+      setIsResetSubmitting(false)
+    }
+  }
+
+  async function handleResetPassword(event) {
+    event.preventDefault()
+
+    if (!resetForm.otpCode.trim()) {
+      setError("Weka OTP uliyopewa.")
       return
     }
 
-    StorageService.setCurrentVendorId(vendor.id)
-    navigate("/vendor/dashboard")
+    if (!resetForm.newPassword) {
+      setError("Weka neno jipya la siri.")
+      return
+    }
+
+    if (resetForm.newPassword !== resetForm.confirmPassword) {
+      setError("Password mpya na uthibitisho wake hazifanani.")
+      return
+    }
+
+    try {
+      setIsResetSubmitting(true)
+      setError("")
+      setSuccess("")
+
+      await vendorApiService.resetPassword({
+        whatsapp: resetForm.whatsapp,
+        otpCode: resetForm.otpCode,
+        newPassword: resetForm.newPassword,
+      })
+
+      setSuccess("Neno la siri limebadilishwa. Sasa unaweza ku-login.")
+      setForm({
+        whatsapp: resetForm.whatsapp,
+        password: "",
+      })
+      setResetForm(initialResetForm)
+      setResetStep("request")
+      setMode("login")
+    } catch (error) {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Imeshindikana kubadilisha neno la siri."
+
+      setError(message)
+    } finally {
+      setIsResetSubmitting(false)
+    }
   }
 
   if (pendingVendor) {
@@ -72,8 +221,7 @@ function VendorLoginPage() {
             <div className="flex justify-center">
               <BrandLogo
                 title="CloveNet Soko"
-                subtitle="Vendor Login"
-                showSubtitle
+                showSubtitle={false}
                 iconSize="lg"
                 textSize="lg"
               />
@@ -90,7 +238,7 @@ function VendorLoginPage() {
             <p className="mx-auto mt-3 max-w-xl text-sm font-semibold leading-6 text-[var(--color-muted)]">
               Duka la{" "}
               <strong className="text-gray-950">
-                {pendingVendor.storeName}
+                {pendingVendor.storeName || pendingVendor.store_name || "vendor"}
               </strong>{" "}
               limepokelewa kwenye CloveNet Soko. Akaunti hii itaweza kuingia
               baada ya verification kukamilika.
@@ -165,166 +313,337 @@ function VendorLoginPage() {
             Rudi Mwanzo
           </button>
 
-          <form
-            onSubmit={handleSubmit}
-            className="rounded-[2rem] border border-[var(--color-border)] bg-white p-5 shadow-sm md:p-7"
-          >
+          <div className="rounded-[2rem] border border-[var(--color-border)] bg-white p-5 shadow-sm md:p-7">
             <div className="text-center">
               <div className="flex justify-center">
                 <BrandLogo
                   title="CloveNet Soko"
-                  subtitle="Vendor Login"
-                  showSubtitle
+                  showSubtitle={false}
                   iconSize="lg"
                   textSize="lg"
                 />
               </div>
 
               <h1 className="mt-7 text-2xl font-black leading-tight text-gray-950">
-                Ingia kwenye duka lako
+                {mode === "login"
+                  ? "Ingia kwenye duka lako"
+                  : resetStep === "request"
+                    ? "Rejesha neno la siri"
+                    : "Weka OTP na password mpya"}
               </h1>
 
-              <p className="mx-auto mt-2 max-w-sm text-sm font-semibold leading-6 text-[var(--color-muted)]">
-                Tumia namba ya WhatsApp na neno la siri ulilotumia wakati wa
-                kusajili duka.
-              </p>
+              {mode === "forgot" && (
+                <p className="mx-auto mt-2 max-w-sm text-xs font-semibold leading-5 text-[var(--color-muted)]">
+                  OTP itaonekana kwa super admin/support kama automatic delivery
+                  haijafanya kazi.
+                </p>
+              )}
             </div>
 
-            <div className="mt-6 rounded-2xl bg-[var(--color-green-soft)] p-4">
-              <div className="flex items-start gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[var(--color-green-dark)]">
-                  <ShieldCheck size={18} strokeWidth={2.6} />
-                </div>
-
-                <div>
-                  <p className="text-sm font-black text-[var(--color-green-dark)]">
-                    Vendor dashboard
-                  </p>
-
-                  <p className="mt-1 text-xs font-semibold leading-5 text-[var(--color-green-dark)]">
-                    Akaunti iliyohakikiwa itaingia moja kwa moja kwenye dashboard
-                    ya kusimamia bidhaa na taarifa za duka.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {error && (
-              <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4">
-                <p className="text-sm font-bold leading-5 text-red-700">
-                  {error}
+            {(error || success) && (
+              <div
+                className={`mt-5 rounded-2xl border p-4 ${
+                  error ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"
+                }`}
+              >
+                <p
+                  className={`text-sm font-bold leading-5 ${
+                    error ? "text-red-700" : "text-green-700"
+                  }`}
+                >
+                  {error || success}
                 </p>
               </div>
             )}
 
-            <div className="mt-6 space-y-4">
-              <div>
-                <label
-                  htmlFor="whatsapp"
-                  className="text-xs font-black text-gray-700"
-                >
-                  Namba ya simu / WhatsApp
-                </label>
+            {mode === "login" ? (
+              <form onSubmit={handleSubmit}>
+                <div className="mt-6 space-y-4">
+                  <div>
+                    <label
+                      htmlFor="whatsapp"
+                      className="text-xs font-black text-gray-700"
+                    >
+                      Namba ya simu / WhatsApp
+                    </label>
 
-                <div
-                  className={`mt-2 flex items-center gap-2 rounded-2xl border bg-[var(--color-bg)] px-4 py-3 transition focus-within:ring-2 focus-within:ring-[var(--color-green)]/20 ${
-                    error
-                      ? "border-red-300"
-                      : "border-[var(--color-border)] focus-within:border-[var(--color-green)]"
-                  }`}
-                >
-                  <MessageCircle
-                    size={18}
-                    strokeWidth={2.5}
-                    className="shrink-0 text-[var(--color-green-dark)]"
-                  />
+                    <div
+                      className={`mt-2 flex items-center gap-2 rounded-2xl border bg-[var(--color-bg)] px-4 py-3 transition focus-within:ring-2 focus-within:ring-[var(--color-green)]/20 ${
+                        error
+                          ? "border-red-300"
+                          : "border-[var(--color-border)] focus-within:border-[var(--color-green)]"
+                      }`}
+                    >
+                      <MessageCircle
+                        size={18}
+                        strokeWidth={2.5}
+                        className="shrink-0 text-[var(--color-green-dark)]"
+                      />
 
-                  <input
-                    id="whatsapp"
-                    required
-                    type="tel"
-                    name="whatsapp"
-                    value={form.whatsapp}
-                    onChange={handleChange}
-                    placeholder="+255700000000"
-                    className="w-full bg-transparent text-sm font-semibold text-gray-800 outline-none placeholder:text-gray-400"
-                  />
+                      <input
+                        id="whatsapp"
+                        required
+                        type="tel"
+                        name="whatsapp"
+                        value={form.whatsapp}
+                        onChange={handleChange}
+                        placeholder="+255700000000"
+                        className="w-full bg-transparent text-sm font-semibold text-gray-800 outline-none placeholder:text-gray-400"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="password"
+                      className="text-xs font-black text-gray-700"
+                    >
+                      Neno la siri
+                    </label>
+
+                    <div
+                      className={`mt-2 flex items-center gap-2 rounded-2xl border bg-[var(--color-bg)] px-4 py-3 transition focus-within:ring-2 focus-within:ring-[var(--color-green)]/20 ${
+                        error
+                          ? "border-red-300"
+                          : "border-[var(--color-border)] focus-within:border-[var(--color-green)]"
+                      }`}
+                    >
+                      <Lock
+                        size={18}
+                        strokeWidth={2.5}
+                        className="shrink-0 text-[var(--color-green-dark)]"
+                      />
+
+                      <input
+                        id="password"
+                        required
+                        type={showPassword ? "text" : "password"}
+                        name="password"
+                        value={form.password}
+                        onChange={handleChange}
+                        placeholder="Weka neno la siri"
+                        className="w-full bg-transparent text-sm font-semibold text-gray-800 outline-none placeholder:text-gray-400"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((current) => !current)}
+                        className="shrink-0 text-gray-500 transition hover:text-[var(--color-navy)]"
+                        aria-label={
+                          showPassword
+                            ? "Ficha neno la siri"
+                            : "Onyesha neno la siri"
+                        }
+                      >
+                        {showPassword ? (
+                          <EyeOff size={18} strokeWidth={2.5} />
+                        ) : (
+                          <Eye size={18} strokeWidth={2.5} />
+                        )}
+                      </button>
+                    </div>
+
+                    <div className="mt-2 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={switchToForgotPassword}
+                        className="text-xs font-black text-[var(--color-green-dark)] hover:underline"
+                      >
+                        Umesahau neno la siri?
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
 
-              <div>
-                <label
-                  htmlFor="password"
-                  className="text-xs font-black text-gray-700"
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--color-green)] px-5 py-3 text-sm font-black text-[var(--color-navy)] transition hover:bg-[var(--color-green-dark)] hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  Neno la siri
-                </label>
-
-                <div
-                  className={`mt-2 flex items-center gap-2 rounded-2xl border bg-[var(--color-bg)] px-4 py-3 transition focus-within:ring-2 focus-within:ring-[var(--color-green)]/20 ${
-                    error
-                      ? "border-red-300"
-                      : "border-[var(--color-border)] focus-within:border-[var(--color-green)]"
-                  }`}
-                >
-                  <Lock
-                    size={18}
-                    strokeWidth={2.5}
-                    className="shrink-0 text-[var(--color-green-dark)]"
-                  />
-
-                  <input
-                    id="password"
-                    required
-                    type={showPassword ? "text" : "password"}
-                    name="password"
-                    value={form.password}
-                    onChange={handleChange}
-                    placeholder="Weka neno la siri"
-                    className="w-full bg-transparent text-sm font-semibold text-gray-800 outline-none placeholder:text-gray-400"
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((current) => !current)}
-                    className="shrink-0 text-gray-500 transition hover:text-[var(--color-navy)]"
-                    aria-label={
-                      showPassword
-                        ? "Ficha neno la siri"
-                        : "Onyesha neno la siri"
-                    }
+                  {isSubmitting ? "Inaingia..." : "Ingia Dukani"}
+                  <ArrowRight size={16} strokeWidth={2.7} />
+                </button>
+              </form>
+            ) : resetStep === "request" ? (
+              <form onSubmit={handleRequestOtp}>
+                <div className="mt-6">
+                  <label
+                    htmlFor="resetWhatsapp"
+                    className="text-xs font-black text-gray-700"
                   >
-                    {showPassword ? (
-                      <EyeOff size={18} strokeWidth={2.5} />
-                    ) : (
-                      <Eye size={18} strokeWidth={2.5} />
-                    )}
-                  </button>
+                    Namba ya simu / WhatsApp
+                  </label>
+
+                  <div className="mt-2 flex items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 transition focus-within:border-[var(--color-green)] focus-within:ring-2 focus-within:ring-[var(--color-green)]/20">
+                    <MessageCircle
+                      size={18}
+                      strokeWidth={2.5}
+                      className="shrink-0 text-[var(--color-green-dark)]"
+                    />
+
+                    <input
+                      id="resetWhatsapp"
+                      required
+                      type="tel"
+                      name="whatsapp"
+                      value={resetForm.whatsapp}
+                      onChange={handleResetChange}
+                      placeholder="+255700000000"
+                      className="w-full bg-transparent text-sm font-semibold text-gray-800 outline-none placeholder:text-gray-400"
+                    />
+                  </div>
                 </div>
 
-                <div className="mt-2 flex justify-end">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setError(
-                        "Forgot password bado haijawezeshwa. Tafadhali wasiliana na support ya CloveNet Soko."
-                      )
-                    }
-                    className="text-xs font-black text-[var(--color-green-dark)] hover:underline"
-                  >
-                    Umesahau neno la siri?
-                  </button>
-                </div>
-              </div>
-            </div>
+                <button
+                  type="submit"
+                  disabled={isResetSubmitting}
+                  className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--color-green)] px-5 py-3 text-sm font-black text-[var(--color-navy)] transition hover:bg-[var(--color-green-dark)] hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {isResetSubmitting ? "Inatengeneza OTP..." : "Tengeneza OTP"}
+                  <KeyRound size={16} strokeWidth={2.7} />
+                </button>
 
-            <button
-              type="submit"
-              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--color-green)] px-5 py-3 text-sm font-black text-[var(--color-navy)] transition hover:bg-[var(--color-green-dark)] hover:text-white"
-            >
-              Ingia Dukani
-              <ArrowRight size={16} strokeWidth={2.7} />
-            </button>
+                <button
+                  type="button"
+                  onClick={switchToLogin}
+                  className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-5 py-3 text-sm font-black text-gray-700 transition hover:bg-white"
+                >
+                  <ArrowLeft size={16} strokeWidth={2.7} />
+                  Rudi Login
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleResetPassword}>
+                <div className="mt-6 space-y-4">
+                  <div>
+                    <label
+                      htmlFor="otpCode"
+                      className="text-xs font-black text-gray-700"
+                    >
+                      OTP Code
+                    </label>
+
+                    <div className="mt-2 flex items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 transition focus-within:border-[var(--color-green)] focus-within:ring-2 focus-within:ring-[var(--color-green)]/20">
+                      <KeyRound
+                        size={18}
+                        strokeWidth={2.5}
+                        className="shrink-0 text-[var(--color-green-dark)]"
+                      />
+
+                      <input
+                        id="otpCode"
+                        required
+                        name="otpCode"
+                        value={resetForm.otpCode}
+                        onChange={handleResetChange}
+                        placeholder="Weka OTP"
+                        className="w-full bg-transparent text-sm font-semibold text-gray-800 outline-none placeholder:text-gray-400"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="newPassword"
+                      className="text-xs font-black text-gray-700"
+                    >
+                      Password mpya
+                    </label>
+
+                    <div className="mt-2 flex items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 transition focus-within:border-[var(--color-green)] focus-within:ring-2 focus-within:ring-[var(--color-green)]/20">
+                      <Lock
+                        size={18}
+                        strokeWidth={2.5}
+                        className="shrink-0 text-[var(--color-green-dark)]"
+                      />
+
+                      <input
+                        id="newPassword"
+                        required
+                        type={showNewPassword ? "text" : "password"}
+                        name="newPassword"
+                        value={resetForm.newPassword}
+                        onChange={handleResetChange}
+                        placeholder="Mfano: NewVendor@123"
+                        className="w-full bg-transparent text-sm font-semibold text-gray-800 outline-none placeholder:text-gray-400"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword((current) => !current)}
+                        className="shrink-0 text-gray-500 transition hover:text-[var(--color-navy)]"
+                      >
+                        {showNewPassword ? (
+                          <EyeOff size={18} strokeWidth={2.5} />
+                        ) : (
+                          <Eye size={18} strokeWidth={2.5} />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="confirmPassword"
+                      className="text-xs font-black text-gray-700"
+                    >
+                      Thibitisha password mpya
+                    </label>
+
+                    <div className="mt-2 flex items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 transition focus-within:border-[var(--color-green)] focus-within:ring-2 focus-within:ring-[var(--color-green)]/20">
+                      <Lock
+                        size={18}
+                        strokeWidth={2.5}
+                        className="shrink-0 text-[var(--color-green-dark)]"
+                      />
+
+                      <input
+                        id="confirmPassword"
+                        required
+                        type={showConfirmPassword ? "text" : "password"}
+                        name="confirmPassword"
+                        value={resetForm.confirmPassword}
+                        onChange={handleResetChange}
+                        placeholder="Rudia password mpya"
+                        className="w-full bg-transparent text-sm font-semibold text-gray-800 outline-none placeholder:text-gray-400"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setShowConfirmPassword((current) => !current)
+                        }
+                        className="shrink-0 text-gray-500 transition hover:text-[var(--color-navy)]"
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff size={18} strokeWidth={2.5} />
+                        ) : (
+                          <Eye size={18} strokeWidth={2.5} />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isResetSubmitting}
+                  className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--color-green)] px-5 py-3 text-sm font-black text-[var(--color-navy)] transition hover:bg-[var(--color-green-dark)] hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {isResetSubmitting ? "Inabadilisha..." : "Badilisha Password"}
+                  <ArrowRight size={16} strokeWidth={2.7} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setResetStep("request")}
+                  className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-5 py-3 text-sm font-black text-gray-700 transition hover:bg-white"
+                >
+                  <ArrowLeft size={16} strokeWidth={2.7} />
+                  Rudi Kuomba OTP
+                </button>
+              </form>
+            )}
 
             <div className="mt-5 flex items-center justify-between gap-3 rounded-2xl bg-[var(--color-bg)] p-4">
               <p className="text-xs font-semibold text-[var(--color-muted)]">
@@ -350,7 +669,7 @@ function VendorLoginPage() {
               </Link>
               .
             </p>
-          </form>
+          </div>
         </div>
       </div>
     </section>

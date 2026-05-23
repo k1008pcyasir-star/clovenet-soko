@@ -11,7 +11,10 @@ import AdminLoginPage from "../features/auth/pages/AdminLoginPage"
 import VendorLoginPage from "../features/auth/pages/VendorLoginPage"
 
 import AdminDashboardPage from "../features/admin/pages/AdminDashboardPage"
+import AdminLogsPage from "../features/admin/pages/AdminLogsPage"
+import AdminOtpsPage from "../features/admin/pages/AdminOtpsPage"
 import AdminProductsPage from "../features/admin/pages/AdminProductsPage"
+import AdminUsersPage from "../features/admin/pages/AdminUsersPage"
 import AdminVendorsPage from "../features/admin/pages/AdminVendorsPage"
 
 import CartPage from "../features/cart/pages/CartPage"
@@ -25,9 +28,13 @@ import PrivacyPage from "../features/legal/pages/PrivacyPage"
 import TermsPage from "../features/legal/pages/TermsPage"
 
 import VendorDashboardPage from "../features/vendor/pages/VendorDashboardPage"
+import VendorOrdersPage from "../features/vendor/pages/VendorOrdersPage"
 import VendorProductsPage from "../features/vendor/pages/VendorProductsPage"
 import VendorProfilePage from "../features/vendor/pages/VendorProfilePage"
 import VendorRegisterPage from "../features/vendor/pages/VendorRegisterPage"
+
+import NotFoundPage from "../pages/NotFoundPage"
+import AdminOrdersPage from "../features/admin/pages/AdminOrdersPage"
 
 function AppRoutes() {
   return (
@@ -59,6 +66,7 @@ function AppRoutes() {
           />
           <Route path="/vendor/dashboard" element={<VendorDashboardPage />} />
           <Route path="/vendor/products" element={<VendorProductsPage />} />
+          <Route path="/vendor/orders" element={<VendorOrdersPage />} />
           <Route path="/vendor/profile" element={<VendorProfilePage />} />
         </Route>
       </Route>
@@ -71,11 +79,15 @@ function AppRoutes() {
           <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
           <Route path="/admin/vendors" element={<AdminVendorsPage />} />
           <Route path="/admin/products" element={<AdminProductsPage />} />
+          <Route path="/admin/users" element={<AdminUsersPage />} />
+          <Route path="/admin/logs" element={<AdminLogsPage />} />
+          <Route path="/admin/otps" element={<AdminOtpsPage />} />
+          <Route path="/admin/orders" element={<AdminOrdersPage />} />
         </Route>
       </Route>
 
       {/* Fallback */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )
 }

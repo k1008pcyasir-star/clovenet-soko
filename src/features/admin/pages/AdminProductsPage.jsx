@@ -1,16 +1,17 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import {
+  AlertCircle,
   ArrowRight,
   BadgeCheck,
   CheckCircle2,
   Clock,
   Eye,
   Images,
+  Loader2,
   MessageCircle,
   Package,
   Search,
-  ShieldCheck,
   ShoppingBag,
   Store,
   Trash2,
@@ -19,7 +20,7 @@ import {
   XCircle,
 } from "lucide-react"
 
-import { StorageService } from "../../../services/storageService"
+import { AdminApiService } from "../../../services/adminApiService"
 import { formatDate, formatMoney } from "../../../utils/formatters"
 
 function getProductImages(product) {
@@ -56,13 +57,33 @@ function AdminProductsPage() {
   const [query, setQuery] = useState("")
   const [featureFilter, setFeatureFilter] = useState("all")
   const [vendorStatusFilter, setVendorStatusFilter] = useState("all")
-  const [products, setProducts] = useState(() => StorageService.getProducts())
+  const [products, setProducts] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
+  const [deletingProductId, setDeletingProductId] = useState("")
 
-  const vendors = useMemo(() => StorageService.getVendors(), [])
+  useEffect(() => {
+    loadProducts()
+  }, [])
+
+  async function loadProducts() {
+    try {
+      setIsLoading(true)
+      setError("")
+
+      const productsData = await AdminApiService.getProducts()
+      setProducts(productsData)
+    } catch (loadError) {
+      setError(loadError.message || "Imeshindikana kupata bidhaa.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const productsWithVendors = useMemo(() => {
     return products.map((product) => {
-      const vendor = vendors.find((item) => item.id === product.vendorId)
+      const vendor = product.vendor || null
 
       return {
         ...product,
@@ -70,7 +91,7 @@ function AdminProductsPage() {
         vendorStatus: getVendorStatus(vendor),
       }
     })
-  }, [products, vendors])
+  }, [products])
 
   const filteredProducts = useMemo(() => {
     const searchText = query.trim().toLowerCase()
@@ -105,7 +126,8 @@ function AdminProductsPage() {
 
   const stats = useMemo(() => {
     const totalProducts = products.length
-    const featuredProducts = products.filter((product) => product.featured).length
+    const featuredProducts = products.filter((product) => product.featured)
+      .length
 
     const totalViews = products.reduce(
       (sum, product) => sum + Number(product.views || 0),
@@ -161,7 +183,7 @@ function AdminProductsPage() {
     setVendorStatusFilter("all")
   }
 
-  function deleteProduct(productId) {
+  async function deleteProduct(productId) {
     const product = products.find((item) => item.id === productId)
 
     const confirmDelete = window.confirm(
@@ -174,10 +196,23 @@ function AdminProductsPage() {
       return
     }
 
-    const updatedProducts = products.filter((item) => item.id !== productId)
+    try {
+      setDeletingProductId(productId)
+      setError("")
+      setSuccess("")
 
-    setProducts(updatedProducts)
-    StorageService.saveProducts(updatedProducts)
+      await AdminApiService.deleteProduct(productId)
+
+      setProducts((currentProducts) =>
+        currentProducts.filter((item) => item.id !== productId)
+      )
+
+      setSuccess("Bidhaa imefutwa kikamilifu.")
+    } catch (deleteError) {
+      setError(deleteError.message || "Imeshindikana kufuta bidhaa.")
+    } finally {
+      setDeletingProductId("")
+    }
   }
 
   return (
@@ -195,7 +230,7 @@ function AdminProductsPage() {
 
             <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-[var(--color-muted)]">
               Angalia, tafuta na simamia bidhaa zote zilizowekwa na vendors
-              kwenye CloveNet Soko.
+              kwenye CloveNet Soko kutoka backend.
             </p>
           </div>
 
@@ -219,6 +254,38 @@ function AdminProductsPage() {
             </button>
           </div>
         </div>
+
+        {(error || success) && (
+          <div
+            className={`mb-5 rounded-2xl border p-4 ${
+              error ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"
+            }`}
+          >
+            <div className="flex items-start gap-2">
+              {error ? (
+                <AlertCircle
+                  size={18}
+                  strokeWidth={2.6}
+                  className="mt-0.5 shrink-0 text-red-600"
+                />
+              ) : (
+                <CheckCircle2
+                  size={18}
+                  strokeWidth={2.6}
+                  className="mt-0.5 shrink-0 text-green-700"
+                />
+              )}
+
+              <p
+                className={`text-sm font-bold leading-5 ${
+                  error ? "text-red-700" : "text-green-700"
+                }`}
+              >
+                {error || success}
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {statCards.map((card) => {
@@ -356,7 +423,12 @@ function AdminProductsPage() {
             </div>
           </div>
 
-          {filteredProducts.length === 0 ? (
+          {isLoading ? (
+            <div className="flex items-center justify-center gap-3 p-10 text-sm font-black text-[var(--color-muted)]">
+              <Loader2 className="animate-spin" size={20} strokeWidth={2.6} />
+              Inapakia bidhaa kutoka backend...
+            </div>
+          ) : filteredProducts.length === 0 ? (
             <div className="p-8 text-center">
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--color-green-soft)] text-[var(--color-green-dark)]">
                 <Package size={34} strokeWidth={2.4} />
@@ -395,6 +467,7 @@ function AdminProductsPage() {
                 const vendorIsVerified = vendorStatus === "verified"
                 const vendorIsSuspended = vendorStatus === "suspended"
                 const vendorIsPending = vendorStatus === "pending_verification"
+                const isDeleting = deletingProductId === product.id
 
                 return (
                   <article key={product.id} className="p-5">
@@ -523,9 +596,18 @@ function AdminProductsPage() {
                         <button
                           type="button"
                           onClick={() => deleteProduct(product.id)}
-                          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs font-black text-red-600 transition hover:bg-red-100"
+                          disabled={isDeleting}
+                          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs font-black text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          <Trash2 size={14} strokeWidth={2.7} />
+                          {isDeleting ? (
+                            <Loader2
+                              size={14}
+                              strokeWidth={2.7}
+                              className="animate-spin"
+                            />
+                          ) : (
+                            <Trash2 size={14} strokeWidth={2.7} />
+                          )}
                           Delete
                         </button>
                       </div>

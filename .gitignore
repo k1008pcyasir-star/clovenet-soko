@@ -7,16 +7,52 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
+*/node_modules/
+
+# Build outputs
 dist
 dist-ssr
+build
+*/dist
+*/build
+
+# Environment files - USIPANDISHE GIT
+.env
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production
+.env.production.local
 *.local
+
+# Backend uploads / temporary files
+uploads/
+src/uploads/
+backend/uploads/
+backend/src/uploads/
+tmp/
+temp/
+
+# Database local files
+*.sqlite
+*.sqlite3
+*.db
+
+# Coverage / cache
+coverage/
+.cache/
+.parcel-cache/
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
 .idea
 .DS_Store
+Thumbs.db
 *.suo
 *.ntvs*
 *.njsproj

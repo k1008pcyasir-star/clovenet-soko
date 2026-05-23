@@ -15,8 +15,8 @@ import {
 } from "lucide-react"
 
 import BrandLogo from "../../../components/brand/BrandLogo"
-import { StorageService } from "../../../services/storageService"
-import { createId, normalizePhone } from "../../../utils/formatters"
+import { normalizePhone } from "../../../utils/formatters"
+import { vendorApiService } from "../../../services/vendorApiService"
 
 const BUSINESS_CATEGORIES = [
   { label: "💻 Laptop & Computer", value: "Laptop & Computer" },
@@ -57,12 +57,24 @@ const initialErrors = {
   confirmPassword: "",
 }
 
+function isStrongPassword(password) {
+  const hasLowercase = /[a-z]/.test(password)
+  const hasUppercase = /[A-Z]/.test(password)
+  const hasNumber = /\d/.test(password)
+  const hasSpecial = /[^A-Za-z0-9]/.test(password)
+  const hasMinLength = password.length >= 8
+
+  return hasLowercase && hasUppercase && hasNumber && hasSpecial && hasMinLength
+}
+
 function VendorRegisterPage() {
   const navigate = useNavigate()
 
   const [form, setForm] = useState(initialForm)
   const [errors, setErrors] = useState(initialErrors)
+  const [submitError, setSubmitError] = useState("")
   const [isSubmitted, setIsSubmitted] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
@@ -76,6 +88,8 @@ function VendorRegisterPage() {
         ? { otherCategory: "" }
         : {}),
     }))
+
+    setSubmitError("")
 
     if (errors[name]) {
       setErrors((current) => ({
@@ -102,7 +116,6 @@ function VendorRegisterPage() {
 
   function validate() {
     const newErrors = { ...initialErrors }
-    const vendors = StorageService.getVendors()
 
     const ownerName = form.ownerName.trim()
     const storeName = form.storeName.trim()
@@ -110,7 +123,6 @@ function VendorRegisterPage() {
     const description = form.description.trim()
     const finalCategory = getFinalCategory()
     const digits = form.whatsapp.replace(/\D/g, "")
-    const normalizedWhatsapp = normalizePhone(form.whatsapp)
 
     let isValid = true
 
@@ -144,8 +156,9 @@ function VendorRegisterPage() {
       isValid = false
     }
 
-    if (form.password.length < 6) {
-      newErrors.password = "Neno la siri liwe na herufi angalau 6."
+    if (!isStrongPassword(form.password)) {
+      newErrors.password =
+        "Neno la siri liwe na angalau herufi 8, herufi kubwa, herufi ndogo, namba na alama maalum."
       isValid = false
     }
 
@@ -154,67 +167,41 @@ function VendorRegisterPage() {
       isValid = false
     }
 
-    const storeExists = vendors.some((vendor) => {
-      return (
-        vendor.storeName?.trim().toLowerCase() === storeName.toLowerCase()
-      )
-    })
-
-    if (storeExists) {
-      newErrors.storeName = "Jina hili la duka tayari limeshatumika."
-      isValid = false
-    }
-
-    const phoneExists = vendors.some((vendor) => {
-      return normalizePhone(vendor.whatsapp || "") === normalizedWhatsapp
-    })
-
-    if (phoneExists) {
-      newErrors.whatsapp = "Namba hii tayari imesajiliwa na duka jingine."
-      isValid = false
-    }
-
     setErrors(newErrors)
-
     return isValid
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault()
 
     if (!validate()) return
 
-    const newVendor = {
-      id: createId("vendor"),
-      ownerName: form.ownerName.trim(),
-      storeName: form.storeName.trim(),
-      whatsapp: normalizePhone(form.whatsapp),
-      location: form.location.trim(),
-      category: getFinalCategory(),
-      description: form.description.trim(),
+    setIsSubmitting(true)
+    setSubmitError("")
 
-      plan: "free",
-      productLimit: 15,
+    try {
+      await vendorApiService.registerVendor({
+        ownerName: form.ownerName.trim(),
+        storeName: form.storeName.trim(),
+        whatsapp: normalizePhone(form.whatsapp),
+        location: form.location.trim(),
+        category: getFinalCategory(),
+        description: form.description.trim(),
+        password: form.password,
+      })
 
-      // MVP note:
-      // Kwa sasa password inahifadhiwa localStorage kwa demo/MVP.
-      // Backend ikianza, hii itahamia kwenye auth salama.
-      password: form.password,
-
-      status: "pending_verification",
-      isVerified: false,
-      createdAt: new Date().toISOString(),
+      setIsSubmitted(true)
+      setForm(initialForm)
+      setErrors(initialErrors)
+      setShowPassword(false)
+      setShowConfirmPassword(false)
+    } catch (error) {
+      setSubmitError(
+        error?.message || "Imeshindikana kusajili duka. Tafadhali jaribu tena."
+      )
+    } finally {
+      setIsSubmitting(false)
     }
-
-    const vendors = StorageService.getVendors()
-
-    StorageService.saveVendors([newVendor, ...vendors])
-
-    setIsSubmitted(true)
-    setForm(initialForm)
-    setErrors(initialErrors)
-    setShowPassword(false)
-    setShowConfirmPassword(false)
   }
 
   if (isSubmitted) {
@@ -225,8 +212,7 @@ function VendorRegisterPage() {
             <div className="flex justify-center">
               <BrandLogo
                 title="CloveNet Soko"
-                subtitle="Vendor Registration"
-                showSubtitle
+                showSubtitle={false}
                 iconSize="lg"
                 textSize="lg"
               />
@@ -319,41 +305,24 @@ function VendorRegisterPage() {
               <div className="flex justify-center">
                 <BrandLogo
                   title="CloveNet Soko"
-                  subtitle="Vendor Registration"
-                  showSubtitle
+                  showSubtitle={false}
                   iconSize="lg"
                   textSize="lg"
                 />
               </div>
 
               <h1 className="mt-7 text-2xl font-black leading-tight text-gray-950">
-                Fungua duka lako bure
+                Fungua duka lako
               </h1>
-
-              <p className="mx-auto mt-2 max-w-md text-sm font-semibold leading-6 text-[var(--color-muted)]">
-                Jaza taarifa za biashara yako ili tuanze verification ya duka
-                lako.
-              </p>
             </div>
 
-            <div className="mt-6 rounded-2xl bg-[var(--color-green-soft)] p-4">
-              <div className="flex items-start gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[var(--color-green-dark)]">
-                  <ShieldCheck size={18} strokeWidth={2.6} />
-                </div>
-
-                <div>
-                  <p className="text-sm font-black text-[var(--color-green-dark)]">
-                    Verification ya duka
-                  </p>
-
-                  <p className="mt-1 text-xs font-semibold leading-5 text-[var(--color-green-dark)]">
-                    Tunapitia taarifa za duka ili kuongeza uaminifu kati ya
-                    vendor na wateja.
-                  </p>
-                </div>
+            {submitError && (
+              <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4">
+                <p className="text-sm font-bold leading-5 text-red-700">
+                  {submitError}
+                </p>
               </div>
-            </div>
+            )}
 
             <div className="mt-6 grid gap-4 md:grid-cols-2">
               <div>
@@ -624,7 +593,7 @@ function VendorRegisterPage() {
                     name="password"
                     value={form.password}
                     onChange={handleChange}
-                    placeholder="Angalau herufi 6"
+                    placeholder="Mfano: Soko@123"
                     className="w-full bg-transparent text-sm font-semibold text-gray-800 outline-none placeholder:text-gray-400"
                   />
 
@@ -715,9 +684,10 @@ function VendorRegisterPage() {
 
             <button
               type="submit"
-              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--color-green)] px-5 py-3 text-sm font-black text-[var(--color-navy)] transition hover:bg-[var(--color-green-dark)] hover:text-white"
+              disabled={isSubmitting}
+              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--color-green)] px-5 py-3 text-sm font-black text-[var(--color-navy)] transition hover:bg-[var(--color-green-dark)] hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
             >
-              Fungua Duka Langu
+              {isSubmitting ? "Inasajili..." : "Fungua Duka Langu"}
               <ArrowRight size={16} strokeWidth={2.7} />
             </button>
 

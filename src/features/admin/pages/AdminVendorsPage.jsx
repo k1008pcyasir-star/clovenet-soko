@@ -1,7 +1,10 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
+  AlertCircle,
   CheckCircle2,
   Clock,
+  CreditCard,
+  Loader2,
   MapPin,
   MessageCircle,
   Search,
@@ -13,29 +16,94 @@ import {
   XCircle,
 } from "lucide-react"
 
-import { StorageService } from "../../../services/storageService"
+import { AdminApiService } from "../../../services/adminApiService"
 import { formatDate } from "../../../utils/formatters"
 
+const PLAN_OPTIONS = [
+  {
+    value: "free",
+    label: "Free",
+    productLimit: 15,
+    featuredLimit: 1,
+  },
+  {
+    value: "basic",
+    label: "Basic",
+    productLimit: 30,
+    featuredLimit: 3,
+  },
+  {
+    value: "pro",
+    label: "Pro",
+    productLimit: 60,
+    featuredLimit: 5,
+  },
+  {
+    value: "business",
+    label: "Business",
+    productLimit: 100,
+    featuredLimit: 10,
+  },
+]
+
+function getVendorStatus(vendor) {
+  if (vendor.status === "verified" || vendor.isVerified) {
+    return "verified"
+  }
+
+  if (vendor.status === "suspended") {
+    return "suspended"
+  }
+
+  return "pending_verification"
+}
+
+function getPlanInfo(plan) {
+  return PLAN_OPTIONS.find((item) => item.value === plan) || PLAN_OPTIONS[0]
+}
+
 function AdminVendorsPage() {
-  const [vendors, setVendors] = useState(() => StorageService.getVendors())
+  const [vendors, setVendors] = useState([])
   const [query, setQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
+  const [lastNotification, setLastNotification] = useState(null)
+  const [updatingVendorId, setUpdatingVendorId] = useState("")
+  const [updatingPlanVendorId, setUpdatingPlanVendorId] = useState("")
 
-  const products = useMemo(() => StorageService.getProducts(), [])
+  useEffect(() => {
+    loadVendors()
+  }, [])
+
+  async function loadVendors() {
+    try {
+      setIsLoading(true)
+      setError("")
+
+      const vendorsData = await AdminApiService.getVendors()
+      setVendors(vendorsData)
+    } catch (loadError) {
+      setError(loadError.message || "Imeshindikana kupata vendors.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const stats = useMemo(() => {
     const total = vendors.length
 
     const pending = vendors.filter(
-      (vendor) => vendor.status === "pending_verification" && !vendor.isVerified
+      (vendor) => getVendorStatus(vendor) === "pending_verification"
     ).length
 
     const verified = vendors.filter(
-      (vendor) => vendor.status === "verified" || vendor.isVerified
+      (vendor) => getVendorStatus(vendor) === "verified"
     ).length
 
     const suspended = vendors.filter(
-      (vendor) => vendor.status === "suspended"
+      (vendor) => getVendorStatus(vendor) === "suspended"
     ).length
 
     return { total, pending, verified, suspended }
@@ -74,37 +142,21 @@ function AdminVendorsPage() {
     return vendors.filter((vendor) => {
       const status = getVendorStatus(vendor)
 
-      const matchesStatus =
-        statusFilter === "all" || statusFilter === status
+      const matchesStatus = statusFilter === "all" || statusFilter === status
 
       const matchesSearch =
         !searchText ||
         vendor.storeName?.toLowerCase().includes(searchText) ||
         vendor.ownerName?.toLowerCase().includes(searchText) ||
         vendor.category?.toLowerCase().includes(searchText) ||
-        vendor.location?.toLowerCase().includes(searchText)
+        vendor.location?.toLowerCase().includes(searchText) ||
+        vendor.plan?.toLowerCase().includes(searchText)
 
       return matchesStatus && matchesSearch
     })
   }, [vendors, query, statusFilter])
 
-  function getVendorStatus(vendor) {
-    if (vendor.status === "verified" || vendor.isVerified) {
-      return "verified"
-    }
-
-    if (vendor.status === "suspended") {
-      return "suspended"
-    }
-
-    return "pending_verification"
-  }
-
-  function getVendorProductCount(vendorId) {
-    return products.filter((product) => product.vendorId === vendorId).length
-  }
-
-  function updateVendorStatus(vendorId, status) {
+  async function updateVendorStatus(vendorId, status) {
     if (status === "suspended") {
       const confirmSuspend = window.confirm(
         "Una uhakika unataka kususpend vendor huyu?"
@@ -113,21 +165,73 @@ function AdminVendorsPage() {
       if (!confirmSuspend) return
     }
 
-    const updatedVendors = vendors.map((vendor) => {
-      if (vendor.id !== vendorId) return vendor
+    try {
+      setUpdatingVendorId(vendorId)
+      setError("")
+      setSuccess("")
+      setLastNotification(null)
 
-      return {
-        ...vendor,
-        status,
-        isVerified: status === "verified",
-        verifiedAt:
-          status === "verified" ? new Date().toISOString() : vendor.verifiedAt,
-        updatedAt: new Date().toISOString(),
+      const data = await AdminApiService.updateVendorStatus(vendorId, status)
+      const updatedVendor = data.vendor
+
+      setVendors((currentVendors) =>
+        currentVendors.map((vendor) =>
+          vendor.id === vendorId ? { ...vendor, ...updatedVendor } : vendor
+        )
+      )
+
+      if (status === "verified" && data.notification?.whatsappUrl) {
+        setLastNotification({
+          vendor: updatedVendor,
+          message: data.notification.notificationMessage,
+          whatsappUrl: data.notification.whatsappUrl,
+        })
+
+        setSuccess(
+          "Vendor amehakikiwa kikamilifu. Sasa unaweza kumtumia taarifa kupitia WhatsApp."
+        )
+      } else {
+        setSuccess("Status ya vendor imebadilishwa kikamilifu.")
       }
-    })
+    } catch (updateError) {
+      setError(updateError.message || "Imeshindikana kubadilisha status.")
+    } finally {
+      setUpdatingVendorId("")
+    }
+  }
 
-    setVendors(updatedVendors)
-    StorageService.saveVendors(updatedVendors)
+  async function updateVendorPlan(vendorId, plan) {
+    try {
+      setUpdatingPlanVendorId(vendorId)
+      setError("")
+      setSuccess("")
+      setLastNotification(null)
+
+      const data = await AdminApiService.updateVendorPlan(vendorId, plan)
+      const updatedVendor = data.vendor
+
+      setVendors((currentVendors) =>
+        currentVendors.map((vendor) =>
+          vendor.id === vendorId ? { ...vendor, ...updatedVendor } : vendor
+        )
+      )
+
+      const planInfo = data.planInfo || getPlanInfo(plan)
+
+      setSuccess(
+        `Plan ya vendor imebadilishwa kuwa ${planInfo.plan || plan}. Product limit: ${planInfo.productLimit}. Featured limit: ${planInfo.featuredLimit}.`
+      )
+    } catch (updateError) {
+      setError(updateError.message || "Imeshindikana kubadilisha plan.")
+    } finally {
+      setUpdatingPlanVendorId("")
+    }
+  }
+
+  function openWhatsAppNotification() {
+    if (!lastNotification?.whatsappUrl) return
+
+    window.open(lastNotification.whatsappUrl, "_blank", "noopener,noreferrer")
   }
 
   function clearFilters() {
@@ -146,10 +250,66 @@ function AdminVendorsPage() {
           <h1 className="mt-1 text-2xl font-black text-gray-950">Vendors</h1>
 
           <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-[var(--color-muted)]">
-            Angalia vendors waliojisajili, hakiki taarifa zao, na badilisha
-            verification status.
+            Angalia vendors waliojisajili, hakiki taarifa zao, badilisha
+            verification status na manage subscription plan kutoka backend.
           </p>
         </div>
+
+        {(error || success) && (
+          <div
+            className={`mb-5 rounded-2xl border p-4 ${
+              error ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"
+            }`}
+          >
+            <div className="flex items-start gap-2">
+              {error ? (
+                <AlertCircle
+                  size={18}
+                  strokeWidth={2.6}
+                  className="mt-0.5 shrink-0 text-red-600"
+                />
+              ) : (
+                <CheckCircle2
+                  size={18}
+                  strokeWidth={2.6}
+                  className="mt-0.5 shrink-0 text-green-700"
+                />
+              )}
+
+              <div className="min-w-0 flex-1">
+                <p
+                  className={`text-sm font-bold leading-5 ${
+                    error ? "text-red-700" : "text-green-700"
+                  }`}
+                >
+                  {error || success}
+                </p>
+
+                {lastNotification?.whatsappUrl && !error && (
+                  <div className="mt-3 rounded-2xl bg-white p-3">
+                    <p className="text-xs font-semibold leading-5 text-gray-600">
+                      Vendor:{" "}
+                      <span className="font-black text-gray-950">
+                        {lastNotification.vendor?.storeName ||
+                          lastNotification.vendor?.store_name ||
+                          "Vendor"}
+                      </span>
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={openWhatsAppNotification}
+                      className="mt-3 inline-flex items-center justify-center gap-2 rounded-2xl bg-[var(--color-green)] px-4 py-2.5 text-xs font-black text-[var(--color-navy)] transition hover:bg-[var(--color-green-dark)] hover:text-white"
+                    >
+                      <MessageCircle size={15} strokeWidth={2.7} />
+                      Mtumie Vendor WhatsApp
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {statCards.map((card) => {
@@ -190,7 +350,7 @@ function AdminVendorsPage() {
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Tafuta duka, owner, category au location..."
+                placeholder="Tafuta duka, owner, category, location au plan..."
                 className="w-full bg-transparent text-sm font-semibold text-gray-800 outline-none placeholder:text-gray-400"
               />
 
@@ -260,7 +420,12 @@ function AdminVendorsPage() {
             </div>
           </div>
 
-          {filteredVendors.length === 0 ? (
+          {isLoading ? (
+            <div className="flex items-center justify-center gap-3 p-10 text-sm font-black text-[var(--color-muted)]">
+              <Loader2 className="animate-spin" size={20} strokeWidth={2.6} />
+              Inapakia vendors kutoka backend...
+            </div>
+          ) : filteredVendors.length === 0 ? (
             <div className="p-6 text-center">
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--color-green-soft)] text-[var(--color-green-dark)]">
                 <Store size={34} strokeWidth={2.4} />
@@ -281,7 +446,12 @@ function AdminVendorsPage() {
                 const status = getVendorStatus(vendor)
                 const isVerified = status === "verified"
                 const isSuspended = status === "suspended"
-                const productCount = getVendorProductCount(vendor.id)
+                const productCount = Number(vendor.productCount || 0)
+                const productLimit = Number(vendor.productLimit || 15)
+                const currentPlan = vendor.plan || "free"
+                const currentPlanInfo = getPlanInfo(currentPlan)
+                const isUpdating = updatingVendorId === vendor.id
+                const isUpdatingPlan = updatingPlanVendorId === vendor.id
 
                 return (
                   <article key={vendor.id} className="p-5">
@@ -300,7 +470,7 @@ function AdminVendorsPage() {
 
                               <p className="mt-0.5 truncate text-xs font-semibold text-[var(--color-muted)]">
                                 {vendor.category || "Category haijawekwa"} •{" "}
-                                {productCount} bidhaa
+                                {productCount}/{productLimit} bidhaa
                               </p>
                             </div>
                           </div>
@@ -327,6 +497,11 @@ function AdminVendorsPage() {
                               : isSuspended
                                 ? "Suspended"
                                 : "Pending Verification"}
+                          </span>
+
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-[10px] font-black text-blue-700">
+                            <CreditCard size={12} strokeWidth={2.8} />
+                            {currentPlanInfo.label} Plan
                           </span>
                         </div>
 
@@ -397,6 +572,51 @@ function AdminVendorsPage() {
                             </span>
                           </p>
                         </div>
+
+                        <div className="mt-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-3">
+                          <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
+                            <div>
+                              <p className="flex items-center gap-2 text-xs font-black text-gray-950">
+                                <CreditCard
+                                  size={15}
+                                  strokeWidth={2.7}
+                                  className="text-[var(--color-green-dark)]"
+                                />
+                                Subscription Plan
+                              </p>
+
+                              <p className="mt-1 text-xs font-semibold text-[var(--color-muted)]">
+                                Product limit: {productLimit} • Featured limit:{" "}
+                                {currentPlanInfo.featuredLimit}
+                              </p>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              {isUpdatingPlan && (
+                                <Loader2
+                                  size={16}
+                                  strokeWidth={2.7}
+                                  className="animate-spin text-[var(--color-green-dark)]"
+                                />
+                              )}
+
+                              <select
+                                value={currentPlan}
+                                disabled={isUpdatingPlan}
+                                onChange={(event) =>
+                                  updateVendorPlan(vendor.id, event.target.value)
+                                }
+                                className="rounded-2xl border border-[var(--color-border)] bg-white px-4 py-2.5 text-xs font-black text-gray-800 outline-none transition focus:border-[var(--color-green)] focus:ring-2 focus:ring-[var(--color-green)]/20 disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                {PLAN_OPTIONS.map((plan) => (
+                                  <option key={plan.value} value={plan.value}>
+                                    {plan.label} - {plan.productLimit} products
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        </div>
                       </div>
 
                       <div className="grid gap-2 sm:grid-cols-3 lg:w-96">
@@ -405,10 +625,18 @@ function AdminVendorsPage() {
                           onClick={() =>
                             updateVendorStatus(vendor.id, "verified")
                           }
-                          disabled={isVerified}
+                          disabled={isVerified || isUpdating}
                           className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[var(--color-green)] px-4 py-2.5 text-xs font-black text-[var(--color-navy)] transition hover:bg-[var(--color-green-dark)] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          <CheckCircle2 size={14} strokeWidth={2.8} />
+                          {isUpdating ? (
+                            <Loader2
+                              size={14}
+                              strokeWidth={2.8}
+                              className="animate-spin"
+                            />
+                          ) : (
+                            <CheckCircle2 size={14} strokeWidth={2.8} />
+                          )}
                           Verify
                         </button>
 
@@ -420,7 +648,9 @@ function AdminVendorsPage() {
                               "pending_verification"
                             )
                           }
-                          disabled={status === "pending_verification"}
+                          disabled={
+                            status === "pending_verification" || isUpdating
+                          }
                           className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2.5 text-xs font-black text-gray-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <Clock size={14} strokeWidth={2.8} />
@@ -432,7 +662,7 @@ function AdminVendorsPage() {
                           onClick={() =>
                             updateVendorStatus(vendor.id, "suspended")
                           }
-                          disabled={isSuspended}
+                          disabled={isSuspended || isUpdating}
                           className="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs font-black text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <XCircle size={14} strokeWidth={2.8} />

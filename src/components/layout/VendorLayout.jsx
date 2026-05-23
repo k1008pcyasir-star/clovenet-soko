@@ -3,11 +3,13 @@ import {
   BarChart3,
   LogOut,
   Package,
+  ShoppingBag,
   UserRound,
 } from "lucide-react"
 
 import BrandLogo from "../brand/BrandLogo"
 import { StorageService } from "../../services/storageService"
+import { vendorApiService } from "../../services/vendorApiService"
 
 const vendorNavItems = [
   {
@@ -21,11 +23,20 @@ const vendorNavItems = [
     path: "/vendor/products",
   },
   {
+    label: "Orders",
+    icon: ShoppingBag,
+    path: "/vendor/orders",
+  },
+  {
     label: "Profile",
     icon: UserRound,
     path: "/vendor/profile",
   },
 ]
+
+const mobileVendorNavItems = vendorNavItems.filter(
+  (item) => item.path !== "/vendor/profile"
+)
 
 function VendorLayout() {
   const navigate = useNavigate()
@@ -33,12 +44,15 @@ function VendorLayout() {
 
   function handleLogout() {
     StorageService.clearCurrentVendorId()
+    vendorApiService.logoutVendor()
     navigate("/vendor/login")
   }
 
   function isActive(path) {
     return location.pathname === path
   }
+
+  const profileIsActive = isActive("/vendor/profile")
 
   return (
     <main className="min-h-screen bg-[var(--color-bg)] pb-24 text-[var(--color-text)] md:pb-0">
@@ -89,9 +103,23 @@ function VendorLayout() {
 
       <Outlet />
 
+      <button
+        type="button"
+        onClick={() => navigate("/vendor/profile")}
+        className={`fixed bottom-[5.7rem] right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full shadow-xl shadow-slate-900/20 transition md:hidden ${
+          profileIsActive
+            ? "bg-[var(--color-green)] text-[var(--color-navy)]"
+            : "bg-[var(--color-navy)] text-white hover:bg-[var(--color-green-dark)]"
+        }`}
+        aria-label="Fungua profile ya duka"
+        title="Profile"
+      >
+        <UserRound size={23} strokeWidth={2.8} />
+      </button>
+
       <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--color-border)] bg-white px-3 py-2 shadow-[0_-8px_24px_rgba(0,0,0,0.05)] md:hidden">
         <div className="mx-auto grid max-w-md grid-cols-4 gap-1 text-center">
-          {vendorNavItems.map((item) => {
+          {mobileVendorNavItems.map((item) => {
             const Icon = item.icon
             const active = isActive(item.path)
 
@@ -100,7 +128,7 @@ function VendorLayout() {
                 key={item.path}
                 type="button"
                 onClick={() => navigate(item.path)}
-                className={`rounded-2xl px-2 py-2 text-xs font-black transition ${
+                className={`rounded-2xl px-2 py-2 text-[11px] font-black transition ${
                   active
                     ? "bg-[var(--color-green-soft)] text-[var(--color-green-dark)]"
                     : "text-gray-500 hover:bg-[var(--color-green-soft)] hover:text-[var(--color-green-dark)]"
@@ -111,7 +139,7 @@ function VendorLayout() {
                   strokeWidth={2.7}
                   className="mx-auto mb-0.5"
                 />
-                <span className="block">{item.label}</span>
+                <span className="block truncate">{item.label}</span>
               </button>
             )
           })}
@@ -119,14 +147,14 @@ function VendorLayout() {
           <button
             type="button"
             onClick={handleLogout}
-            className="rounded-2xl px-2 py-2 text-xs font-black text-red-600 transition hover:bg-red-50"
+            className="rounded-2xl px-2 py-2 text-[11px] font-black text-red-600 transition hover:bg-red-50"
           >
             <LogOut
               size={18}
               strokeWidth={2.7}
               className="mx-auto mb-0.5"
             />
-            <span className="block">Logout</span>
+            <span className="block truncate">Logout</span>
           </button>
         </div>
       </nav>

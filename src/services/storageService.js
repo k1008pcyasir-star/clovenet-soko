@@ -118,6 +118,35 @@ export const StorageService = {
     const existingItem = cart.find((item) => item.productId === product.id)
     const productImages = getProductImages(product)
 
+    const vendorSnapshot = product.vendor
+      ? {
+          id: product.vendor.id || product.vendorId || "",
+          storeName: product.vendor.storeName || product.vendor.store_name || "",
+          ownerName: product.vendor.ownerName || product.vendor.owner_name || "",
+          whatsapp: product.vendor.whatsapp || "",
+          location: product.vendor.location || "",
+          category: product.vendor.category || "",
+          status: product.vendor.status || "",
+          isVerified:
+            product.vendor.isVerified || product.vendor.is_verified || false,
+        }
+      : null
+
+    const productSnapshot = {
+      id: product.id,
+      vendorId: product.vendorId || product.vendor?.id || "",
+      name: product.name || "Bidhaa",
+      category: product.category || "",
+      price: safeNumber(product.price),
+      oldPrice: safeNumber(product.oldPrice || product.old_price),
+      specs: product.specs || "",
+      description: product.description || "",
+      image: productImages[0] || "",
+      images: productImages,
+      featured: Boolean(product.featured),
+      vendor: vendorSnapshot,
+    }
+
     let updatedCart
 
     if (existingItem) {
@@ -126,6 +155,8 @@ export const StorageService = {
           ? {
               ...item,
               quantity: safeNumber(item.quantity, 1) + 1,
+              product: item.product || productSnapshot,
+              vendor: item.vendor || vendorSnapshot,
               image: item.image || productImages[0] || "",
               images:
                 Array.isArray(item.images) && item.images.length > 0
@@ -144,11 +175,13 @@ export const StorageService = {
           name: product.name || "Bidhaa",
           category: product.category || "",
           price: safeNumber(product.price),
-          oldPrice: safeNumber(product.oldPrice),
+          oldPrice: safeNumber(product.oldPrice || product.old_price),
           image: productImages[0] || "",
           images: productImages,
           emoji: product.emoji || "",
           quantity: 1,
+          product: productSnapshot,
+          vendor: vendorSnapshot,
           addedAt: new Date().toISOString(),
         },
       ]
@@ -280,8 +313,6 @@ export const StorageService = {
     }
   },
 
-  // TODO: Dark mode support will be implemented later.
-  // These methods are kept here so theme storage remains centralized.
   getTheme() {
     try {
       return localStorage.getItem(STORAGE_KEYS.theme) || "light"

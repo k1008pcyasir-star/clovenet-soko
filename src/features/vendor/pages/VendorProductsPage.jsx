@@ -1,8 +1,7 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   AlertCircle,
   BadgeCheck,
-  Camera,
   Check,
   Edit3,
   Eye,
@@ -15,8 +14,8 @@ import {
   X,
 } from "lucide-react"
 
-import { StorageService } from "../../../services/storageService"
-import { createId, formatMoney } from "../../../utils/formatters"
+import { vendorApiService } from "../../../services/vendorApiService"
+import { formatMoney } from "../../../utils/formatters"
 
 const PRODUCT_CATEGORIES = [
   { label: "Laptop & Computer", value: "Laptop" },
@@ -49,6 +48,50 @@ const initialForm = {
 const MAX_IMAGE_WIDTH = 900
 const IMAGE_QUALITY = 0.75
 
+function formatPriceInput(value) {
+  const digits = String(value || "").replace(/\D/g, "")
+
+  if (!digits) return ""
+
+  return Number(digits).toLocaleString("en-US")
+}
+
+function parseMoneyValue(value) {
+  const digits = String(value || "").replace(/\D/g, "")
+
+  if (!digits) return 0
+
+  return Number(digits)
+}
+
+function getProductId(product) {
+  return product?.id || product?.product_id || ""
+}
+
+function getVendorId(product) {
+  return product?.vendorId || product?.vendor_id || ""
+}
+
+function getOldPrice(product) {
+  return product?.oldPrice || product?.old_price || 0
+}
+
+function getProductImages(product) {
+  if (Array.isArray(product?.images)) {
+    return product.images.filter(Boolean)
+  }
+
+  if (product?.image) {
+    return [product.image]
+  }
+
+  if (product?.image_url) {
+    return [product.image_url]
+  }
+
+  return []
+}
+
 function getImageLimitByVendor(vendor) {
   if (!vendor) return 3
 
@@ -59,6 +102,19 @@ function getImageLimitByVendor(vendor) {
   }
 
   return 5
+}
+
+function getFeaturedLimitByVendor(vendor) {
+  if (!vendor) return 1
+
+  const plan = vendor.plan || "free"
+
+  if (plan === "free") return 1
+  if (plan === "basic") return 3
+  if (plan === "pro") return 5
+  if (plan === "business") return 10
+
+  return 1
 }
 
 function getCategoryFormValue(category) {
@@ -72,23 +128,20 @@ function getCategoryFormValue(category) {
 
 function buildFormFromProduct(product) {
   const categoryValue = getCategoryFormValue(product?.category || "")
-  const productImages = Array.isArray(product?.images)
-    ? product.images
-    : product?.image
-      ? [product.image]
-      : []
+  const productImages = getProductImages(product)
+  const oldPrice = getOldPrice(product)
 
   return {
     name: product?.name || "",
     category: categoryValue,
     otherCategory:
       product?.category && categoryValue === "Other" ? product.category : "",
-    price: product?.price ? String(product.price) : "",
-    oldPrice: product?.oldPrice ? String(product.oldPrice) : "",
+    price: product?.price ? formatPriceInput(product.price) : "",
+    oldPrice: oldPrice ? formatPriceInput(oldPrice) : "",
     specs: product?.specs || "",
     description: product?.description || "",
     featured: Boolean(product?.featured),
-    images: productImages.filter(Boolean),
+    images: productImages,
   }
 }
 
@@ -135,27 +188,36 @@ function compressImage(file) {
 
 function VendorProductsPage() {
   const [form, setForm] = useState(initialForm)
-  const [products, setProducts] = useState(() => StorageService.getProducts())
+  const [products, setProducts] = useState([])
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   const [editingProductId, setEditingProductId] = useState("")
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
 
   const vendor = useMemo(() => {
-    const vendorId = StorageService.getCurrentVendorId()
-    const vendors = StorageService.getVendors()
-
-    return vendors.find((item) => item.id === vendorId) || null
+    return vendorApiService.getCurrentVendor()
   }, [])
 
   const vendorProducts = useMemo(() => {
-    if (!vendor) return []
-
-    return products.filter((product) => product.vendorId === vendor.id)
-  }, [products, vendor])
+    return Array.isArray(products) ? products : []
+  }, [products])
 
   const isEditing = Boolean(editingProductId)
-  const productLimit = Number(vendor?.productLimit || 15)
+  const productLimit = Number(vendor?.productLimit || vendor?.product_limit || 15)
   const imageLimit = getImageLimitByVendor(vendor)
+  const featuredLimit = getFeaturedLimitByVendor(vendor)
+
+  const currentFeaturedCount = vendorProducts.filter((product) => {
+    const productId = getProductId(product)
+
+    if (isEditing && productId === editingProductId) {
+      return false
+    }
+
+    return Boolean(product.featured)
+  }).length
+
   const remainingProducts = Math.max(productLimit - vendorProducts.length, 0)
   const hasReachedLimit = !isEditing && vendorProducts.length >= productLimit
   const productUsagePercent = Math.min(
@@ -163,12 +225,37 @@ function VendorProductsPage() {
     100
   )
 
+  async function loadVendorProducts() {
+    try {
+      setIsLoading(true)
+      setError("")
+
+      const data = await vendorApiService.getVendorProducts()
+      setProducts(Array.isArray(data) ? data : [])
+    } catch (loadError) {
+      setError(loadError?.message || "Imeshindikana kupakia bidhaa.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (vendor) {
+      loadVendorProducts()
+    } else {
+      setIsLoading(false)
+    }
+  }, [vendor])
+
   function handleChange(event) {
     const { name, value, type, checked } = event.target
 
+    const nextValue =
+      name === "price" || name === "oldPrice" ? formatPriceInput(value) : value
+
     setForm((current) => ({
       ...current,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: type === "checkbox" ? checked : nextValue,
       ...(name === "category" && value !== "Other"
         ? { otherCategory: "" }
         : {}),
@@ -241,8 +328,8 @@ function VendorProductsPage() {
 
   function validateProductForm() {
     const finalCategory = getFinalCategory()
-    const price = Number(form.price)
-    const oldPrice = form.oldPrice ? Number(form.oldPrice) : 0
+    const price = parseMoneyValue(form.price)
+    const oldPrice = parseMoneyValue(form.oldPrice)
 
     if (!form.name.trim()) {
       setError("Weka jina la bidhaa.")
@@ -264,6 +351,13 @@ function VendorProductsPage() {
       return null
     }
 
+    if (form.featured && currentFeaturedCount >= featuredLimit) {
+      setError(
+        `Plan yako ya sasa inaruhusu featured product ${featuredLimit} tu. Upgrade plan kuongeza featured products zaidi.`
+      )
+      return null
+    }
+
     return {
       finalCategory,
       price,
@@ -271,7 +365,7 @@ function VendorProductsPage() {
     }
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault()
 
     if (!vendor) {
@@ -293,47 +387,7 @@ function VendorProductsPage() {
     const { finalCategory, price, oldPrice } = validated
     const productImages = form.images.slice(0, imageLimit)
 
-    if (isEditing) {
-      const productToEdit = products.find(
-        (product) =>
-          product.id === editingProductId && product.vendorId === vendor.id
-      )
-
-      if (!productToEdit) {
-        setError("Bidhaa unayotaka ku-edit haijapatikana.")
-        return
-      }
-
-      const updatedProducts = products.map((product) => {
-        if (product.id !== editingProductId || product.vendorId !== vendor.id) {
-          return product
-        }
-
-        return {
-          ...product,
-          name: form.name.trim(),
-          category: finalCategory,
-          price,
-          oldPrice,
-          specs: form.specs.trim(),
-          description: form.description.trim(),
-          featured: form.featured,
-          image: productImages[0] || "",
-          images: productImages,
-          updatedAt: new Date().toISOString(),
-        }
-      })
-
-      setProducts(updatedProducts)
-      StorageService.saveProducts(updatedProducts)
-      setSuccess("Mabadiliko ya bidhaa yamehifadhiwa.")
-      resetForm()
-      return
-    }
-
-    const newProduct = {
-      id: createId("product"),
-      vendorId: vendor.id,
+    const payload = {
       name: form.name.trim(),
       category: finalCategory,
       price,
@@ -343,26 +397,44 @@ function VendorProductsPage() {
       featured: form.featured,
       image: productImages[0] || "",
       images: productImages,
-      views: 0,
-      orderClicks: 0,
-      createdAt: new Date().toISOString(),
     }
 
-    const updatedProducts = [newProduct, ...products]
+    try {
+      setIsSaving(true)
+      setError("")
+      setSuccess("")
 
-    setProducts(updatedProducts)
-    StorageService.saveProducts(updatedProducts)
-    setSuccess("Bidhaa imehifadhiwa kikamilifu.")
-    resetForm()
+      if (isEditing) {
+        await vendorApiService.updateVendorProduct(editingProductId, payload)
+        setSuccess("Mabadiliko ya bidhaa yamehifadhiwa.")
+      } else {
+        await vendorApiService.createVendorProduct(payload)
+        setSuccess("Bidhaa imehifadhiwa kikamilifu.")
+      }
+
+      resetForm()
+      await loadVendorProducts()
+    } catch (saveError) {
+      setError(saveError?.message || "Imeshindikana kuhifadhi bidhaa.")
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   function startEditProduct(product) {
-    if (!vendor || product.vendorId !== vendor.id) {
+    const productId = getProductId(product)
+
+    if (!productId) {
+      setError("Bidhaa hii haina ID sahihi.")
+      return
+    }
+
+    if (getVendorId(product) && vendor?.id && getVendorId(product) !== vendor.id) {
       setError("Huwezi ku-edit bidhaa ya vendor mwingine.")
       return
     }
 
-    setEditingProductId(product.id)
+    setEditingProductId(productId)
     setForm(buildFormFromProduct(product))
     setError("")
     setSuccess("")
@@ -378,7 +450,7 @@ function VendorProductsPage() {
     setSuccess("")
   }
 
-  function deleteProduct(productId) {
+  async function deleteProduct(productId) {
     const confirmDelete = window.confirm(
       "Una uhakika unataka kufuta bidhaa hii? Hatua hii haiwezi kurudishwa."
     )
@@ -387,16 +459,24 @@ function VendorProductsPage() {
       return
     }
 
-    const updatedProducts = products.filter((product) => product.id !== productId)
+    try {
+      setIsSaving(true)
+      setError("")
+      setSuccess("")
 
-    setProducts(updatedProducts)
-    StorageService.saveProducts(updatedProducts)
+      await vendorApiService.deleteVendorProduct(productId)
 
-    if (editingProductId === productId) {
-      resetForm()
+      if (editingProductId === productId) {
+        resetForm()
+      }
+
+      setSuccess("Bidhaa imefutwa.")
+      await loadVendorProducts()
+    } catch (deleteError) {
+      setError(deleteError?.message || "Imeshindikana kufuta bidhaa.")
+    } finally {
+      setIsSaving(false)
     }
-
-    setSuccess("Bidhaa imefutwa.")
   }
 
   if (!vendor) {
@@ -432,7 +512,7 @@ function VendorProductsPage() {
             </p>
 
             <h1 className="mt-1 text-2xl font-black text-gray-950">
-              Bidhaa za {vendor.storeName}
+              Bidhaa za {vendor.storeName || vendor.store_name}
             </h1>
 
             <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-[var(--color-muted)]">
@@ -530,6 +610,12 @@ function VendorProductsPage() {
           </div>
         )}
 
+        {isLoading && (
+          <div className="mb-5 rounded-2xl border border-[var(--color-border)] bg-white p-4 text-sm font-bold text-[var(--color-muted)]">
+            Inapakia bidhaa...
+          </div>
+        )}
+
         <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
           <form
             onSubmit={handleSubmit}
@@ -601,7 +687,11 @@ function VendorProductsPage() {
                       accept="image/*"
                       multiple
                       onChange={handleImageUpload}
-                      disabled={hasReachedLimit || form.images.length >= imageLimit}
+                      disabled={
+                        hasReachedLimit ||
+                        form.images.length >= imageLimit ||
+                        isSaving
+                      }
                       className="hidden"
                     />
 
@@ -635,7 +725,8 @@ function VendorProductsPage() {
                           <button
                             type="button"
                             onClick={() => removeImage(index)}
-                            className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white transition hover:bg-red-600"
+                            disabled={isSaving}
+                            className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-60"
                             aria-label="Ondoa picha"
                           >
                             <X size={14} strokeWidth={2.8} />
@@ -675,7 +766,7 @@ function VendorProductsPage() {
                   name="name"
                   value={form.name}
                   onChange={handleChange}
-                  disabled={hasReachedLimit}
+                  disabled={hasReachedLimit || isSaving}
                   placeholder="Mfano: HP EliteBook 840 G6"
                   className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-[var(--color-green)] focus:ring-2 focus:ring-[var(--color-green)]/20 disabled:cursor-not-allowed disabled:opacity-60"
                 />
@@ -691,7 +782,7 @@ function VendorProductsPage() {
                   name="category"
                   value={form.category}
                   onChange={handleChange}
-                  disabled={hasReachedLimit}
+                  disabled={hasReachedLimit || isSaving}
                   className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition focus:border-[var(--color-green)] focus:ring-2 focus:ring-[var(--color-green)]/20 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <option value="">Chagua category</option>
@@ -708,7 +799,7 @@ function VendorProductsPage() {
                     name="otherCategory"
                     value={form.otherCategory}
                     onChange={handleChange}
-                    disabled={hasReachedLimit}
+                    disabled={hasReachedLimit || isSaving}
                     placeholder="Andika category ya bidhaa"
                     className="mt-3 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-[var(--color-green)] focus:ring-2 focus:ring-[var(--color-green)]/20 disabled:cursor-not-allowed disabled:opacity-60"
                   />
@@ -722,12 +813,13 @@ function VendorProductsPage() {
 
                 <input
                   required
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   name="price"
                   value={form.price}
                   onChange={handleChange}
-                  disabled={hasReachedLimit}
-                  placeholder="Mfano: 980000"
+                  disabled={hasReachedLimit || isSaving}
+                  placeholder="Mfano: 980,000"
                   className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-[var(--color-green)] focus:ring-2 focus:ring-[var(--color-green)]/20 disabled:cursor-not-allowed disabled:opacity-60"
                 />
               </div>
@@ -738,11 +830,12 @@ function VendorProductsPage() {
                 </label>
 
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   name="oldPrice"
                   value={form.oldPrice}
                   onChange={handleChange}
-                  disabled={hasReachedLimit}
+                  disabled={hasReachedLimit || isSaving}
                   placeholder="Optional"
                   className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-[var(--color-green)] focus:ring-2 focus:ring-[var(--color-green)]/20 disabled:cursor-not-allowed disabled:opacity-60"
                 />
@@ -757,7 +850,7 @@ function VendorProductsPage() {
                   name="specs"
                   value={form.specs}
                   onChange={handleChange}
-                  disabled={hasReachedLimit}
+                  disabled={hasReachedLimit || isSaving}
                   placeholder="Mfano: Core i5, RAM 8GB, SSD 256GB"
                   className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-[var(--color-green)] focus:ring-2 focus:ring-[var(--color-green)]/20 disabled:cursor-not-allowed disabled:opacity-60"
                 />
@@ -773,7 +866,7 @@ function VendorProductsPage() {
                   name="description"
                   value={form.description}
                   onChange={handleChange}
-                  disabled={hasReachedLimit}
+                  disabled={hasReachedLimit || isSaving}
                   rows={3}
                   placeholder="Elezea bidhaa kwa ufupi..."
                   className="mt-2 w-full resize-none rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-[var(--color-green)] focus:ring-2 focus:ring-[var(--color-green)]/20 disabled:cursor-not-allowed disabled:opacity-60"
@@ -783,7 +876,9 @@ function VendorProductsPage() {
               <div className="md:col-span-2">
                 <label
                   className={`flex w-full cursor-pointer items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 ${
-                    hasReachedLimit ? "cursor-not-allowed opacity-60" : ""
+                    hasReachedLimit || isSaving
+                      ? "cursor-not-allowed opacity-60"
+                      : ""
                   }`}
                 >
                   <span className="flex items-center gap-2 text-sm font-black text-gray-700">
@@ -800,28 +895,38 @@ function VendorProductsPage() {
                     name="featured"
                     checked={form.featured}
                     onChange={handleChange}
-                    disabled={hasReachedLimit}
+                    disabled={hasReachedLimit || isSaving}
                     className="h-4 w-4 accent-[var(--color-green)]"
                   />
                 </label>
+
+                <p className="mt-2 text-xs font-semibold leading-5 text-[var(--color-muted)]">
+                  Plan yako ya sasa inaruhusu featured product {featuredLimit}.
+                  Umetumia {currentFeaturedCount}/{featuredLimit}.
+                </p>
               </div>
             </div>
 
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <button
                 type="submit"
-                disabled={hasReachedLimit}
+                disabled={hasReachedLimit || isSaving}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--color-green)] px-5 py-3 text-sm font-black text-[var(--color-navy)] transition hover:bg-[var(--color-green-dark)] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Save size={16} strokeWidth={2.7} />
-                {isEditing ? "Hifadhi Mabadiliko" : "Hifadhi Bidhaa"}
+                {isSaving
+                  ? "Inahifadhi..."
+                  : isEditing
+                    ? "Hifadhi Mabadiliko"
+                    : "Hifadhi Bidhaa"}
               </button>
 
               {isEditing && (
                 <button
                   type="button"
                   onClick={cancelEdit}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[var(--color-border)] bg-white px-5 py-3 text-sm font-black text-gray-700 transition hover:bg-[var(--color-bg)]"
+                  disabled={isSaving}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[var(--color-border)] bg-white px-5 py-3 text-sm font-black text-gray-700 transition hover:bg-[var(--color-bg)] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <X size={16} strokeWidth={2.7} />
                   Cancel Edit
@@ -843,7 +948,7 @@ function VendorProductsPage() {
               </div>
             </div>
 
-            {vendorProducts.length === 0 ? (
+            {!isLoading && vendorProducts.length === 0 ? (
               <div className="mt-6 rounded-[2rem] bg-[var(--color-bg)] p-6 text-center">
                 <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--color-green-soft)] text-[var(--color-green-dark)]">
                   <Package size={34} strokeWidth={2.4} />
@@ -861,17 +966,15 @@ function VendorProductsPage() {
             ) : (
               <div className="mt-5 space-y-3">
                 {vendorProducts.map((product) => {
-                  const productImages = Array.isArray(product.images)
-                    ? product.images
-                    : product.image
-                      ? [product.image]
-                      : []
+                  const productId = getProductId(product)
+                  const productImages = getProductImages(product)
                   const mainImage = productImages[0] || ""
-                  const activeEditing = editingProductId === product.id
+                  const activeEditing = editingProductId === productId
+                  const oldPrice = getOldPrice(product)
 
                   return (
                     <article
-                      key={product.id}
+                      key={productId}
                       className={`rounded-2xl border p-4 transition ${
                         activeEditing
                           ? "border-[var(--color-green)] bg-[var(--color-green-soft)]/45"
@@ -921,9 +1024,9 @@ function VendorProductsPage() {
                             {formatMoney(product.price)}
                           </p>
 
-                          {Number(product.oldPrice) > Number(product.price) && (
+                          {Number(oldPrice) > Number(product.price) && (
                             <p className="mt-0.5 text-xs font-semibold text-gray-400 line-through">
-                              {formatMoney(product.oldPrice)}
+                              {formatMoney(oldPrice)}
                             </p>
                           )}
 
@@ -937,7 +1040,8 @@ function VendorProductsPage() {
                             <button
                               type="button"
                               onClick={() => startEditProduct(product)}
-                              className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-black transition ${
+                              disabled={isSaving}
+                              className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-black transition disabled:cursor-not-allowed disabled:opacity-60 ${
                                 activeEditing
                                   ? "border-[var(--color-green)] bg-white text-[var(--color-green-dark)]"
                                   : "border-[var(--color-border)] bg-white text-gray-700 hover:bg-[var(--color-green-soft)] hover:text-[var(--color-green-dark)]"
@@ -949,8 +1053,9 @@ function VendorProductsPage() {
 
                             <button
                               type="button"
-                              onClick={() => deleteProduct(product.id)}
-                              className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-black text-red-600 transition hover:bg-red-100"
+                              onClick={() => deleteProduct(productId)}
+                              disabled={isSaving}
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-black text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               <Trash2 size={13} strokeWidth={2.7} />
                               Delete
@@ -962,7 +1067,7 @@ function VendorProductsPage() {
                             </div>
                           </div>
 
-                          {product.updatedAt && (
+                          {(product.updatedAt || product.updated_at) && (
                             <p className="mt-2 text-[10px] font-bold text-[var(--color-muted)]">
                               Updated recently
                             </p>

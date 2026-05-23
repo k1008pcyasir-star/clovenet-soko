@@ -1,27 +1,21 @@
 import { Navigate, Outlet } from "react-router-dom"
 
-import { StorageService } from "../../../services/storageService"
+import { vendorApiService } from "../../../services/vendorApiService"
 
 function VendorAuthGuard() {
-  const currentVendorId = StorageService.getCurrentVendorId()
+  const token = vendorApiService.getVendorToken()
+  const vendor = vendorApiService.getCurrentVendor()
 
-  if (!currentVendorId) {
+  if (!token || !vendor) {
+    vendorApiService.logoutVendor()
     return <Navigate to="/vendor/login" replace />
   }
 
-  const vendors = StorageService.getVendors()
-  const vendor = vendors.find((item) => item.id === currentVendorId)
-
-  if (!vendor) {
-    StorageService.clearCurrentVendorId()
-    return <Navigate to="/vendor/login" replace />
-  }
-
-  const isVerified = vendor.status === "verified" || vendor.isVerified
+  const isVerified = vendor.status === "verified"
   const isSuspended = vendor.status === "suspended"
 
   if (!isVerified || isSuspended) {
-    StorageService.clearCurrentVendorId()
+    vendorApiService.logoutVendor()
     return <Navigate to="/vendor/login" replace />
   }
 
