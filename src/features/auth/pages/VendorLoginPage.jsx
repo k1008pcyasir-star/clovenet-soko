@@ -7,6 +7,7 @@ import {
   EyeOff,
   HelpCircle,
   KeyRound,
+  Loader2,
   Lock,
   MessageCircle,
   ShieldCheck,
@@ -343,7 +344,9 @@ function VendorLoginPage() {
             {(error || success) && (
               <div
                 className={`mt-5 rounded-2xl border p-4 ${
-                  error ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"
+                  error
+                    ? "border-red-200 bg-red-50"
+                    : "border-green-200 bg-green-50"
                 }`}
               >
                 <p
@@ -460,8 +463,19 @@ function VendorLoginPage() {
                   disabled={isSubmitting}
                   className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--color-green)] px-5 py-3 text-sm font-black text-[var(--color-navy)] transition hover:bg-[var(--color-green-dark)] hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  {isSubmitting ? "Inaingia..." : "Ingia Dukani"}
-                  <ArrowRight size={16} strokeWidth={2.7} />
+                  {isSubmitting ? (
+                    <Loader2
+                      size={17}
+                      strokeWidth={2.7}
+                      className="animate-spin"
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <>
+                      Ingia Dukani
+                      <ArrowRight size={16} strokeWidth={2.7} />
+                    </>
+                  )}
                 </button>
               </form>
             ) : resetStep === "request" ? (
@@ -499,8 +513,19 @@ function VendorLoginPage() {
                   disabled={isResetSubmitting}
                   className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--color-green)] px-5 py-3 text-sm font-black text-[var(--color-navy)] transition hover:bg-[var(--color-green-dark)] hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  {isResetSubmitting ? "Inatengeneza OTP..." : "Tengeneza OTP"}
-                  <KeyRound size={16} strokeWidth={2.7} />
+                  {isResetSubmitting ? (
+                    <Loader2
+                      size={17}
+                      strokeWidth={2.7}
+                      className="animate-spin"
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <>
+                      Tengeneza OTP
+                      <KeyRound size={16} strokeWidth={2.7} />
+                    </>
+                  )}
                 </button>
 
                 <button
@@ -572,6 +597,11 @@ function VendorLoginPage() {
                         type="button"
                         onClick={() => setShowNewPassword((current) => !current)}
                         className="shrink-0 text-gray-500 transition hover:text-[var(--color-navy)]"
+                        aria-label={
+                          showNewPassword
+                            ? "Ficha password mpya"
+                            : "Onyesha password mpya"
+                        }
                       >
                         {showNewPassword ? (
                           <EyeOff size={18} strokeWidth={2.5} />
@@ -614,6 +644,11 @@ function VendorLoginPage() {
                           setShowConfirmPassword((current) => !current)
                         }
                         className="shrink-0 text-gray-500 transition hover:text-[var(--color-navy)]"
+                        aria-label={
+                          showConfirmPassword
+                            ? "Ficha uthibitisho wa password"
+                            : "Onyesha uthibitisho wa password"
+                        }
                       >
                         {showConfirmPassword ? (
                           <EyeOff size={18} strokeWidth={2.5} />
@@ -630,8 +665,19 @@ function VendorLoginPage() {
                   disabled={isResetSubmitting}
                   className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--color-green)] px-5 py-3 text-sm font-black text-[var(--color-navy)] transition hover:bg-[var(--color-green-dark)] hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  {isResetSubmitting ? "Inabadilisha..." : "Badilisha Password"}
-                  <ArrowRight size={16} strokeWidth={2.7} />
+                  {isResetSubmitting ? (
+                    <Loader2
+                      size={17}
+                      strokeWidth={2.7}
+                      className="animate-spin"
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <>
+                      Badilisha Password
+                      <ArrowRight size={16} strokeWidth={2.7} />
+                    </>
+                  )}
                 </button>
 
                 <button

@@ -124,6 +124,7 @@ function VendorOrdersPage() {
   const [query, setQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [isLoading, setIsLoading] = useState(true)
+  const [hasLoaded, setHasLoaded] = useState(false)
   const [updatingOrderId, setUpdatingOrderId] = useState("")
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
@@ -144,6 +145,7 @@ function VendorOrdersPage() {
       setError(loadError?.message || "Imeshindikana kupata orders.")
     } finally {
       setIsLoading(false)
+      setHasLoaded(true)
     }
   }
 
@@ -224,6 +226,10 @@ function VendorOrdersPage() {
     setStatusFilter("all")
   }
 
+  if (isLoading && !hasLoaded) {
+    return null
+  }
+
   return (
     <section className="min-h-screen bg-[var(--color-bg)] px-4 py-6 text-[var(--color-text)] md:px-6 md:py-8">
       <div className="mx-auto max-w-7xl">
@@ -250,7 +256,12 @@ function VendorOrdersPage() {
             className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[var(--color-border)] bg-white px-4 py-2.5 text-sm font-black text-gray-700 shadow-sm transition hover:bg-[var(--color-bg)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isLoading ? (
-              <Loader2 size={16} strokeWidth={2.7} className="animate-spin" />
+              <Loader2
+                size={16}
+                strokeWidth={2.7}
+                className="animate-spin"
+                aria-hidden="true"
+              />
             ) : (
               <RefreshCw size={16} strokeWidth={2.7} />
             )}
@@ -294,7 +305,11 @@ function VendorOrdersPage() {
           <StatCard icon={ShoppingBag} label="Jumla" value={stats.total} />
           <StatCard icon={Clock} label="New" value={stats.newOrders} />
           <StatCard icon={Phone} label="Contacted" value={stats.contacted} />
-          <StatCard icon={CheckCircle2} label="Completed" value={stats.completed} />
+          <StatCard
+            icon={CheckCircle2}
+            label="Completed"
+            value={stats.completed}
+          />
         </div>
 
         <div className="mt-6 rounded-[2rem] border border-[var(--color-border)] bg-white p-4 shadow-sm">
@@ -376,12 +391,7 @@ function VendorOrdersPage() {
             </div>
           </div>
 
-          {isLoading ? (
-            <div className="flex items-center justify-center gap-3 p-10 text-sm font-black text-[var(--color-muted)]">
-              <Loader2 className="animate-spin" size={20} strokeWidth={2.6} />
-              Inapakia orders...
-            </div>
-          ) : filteredOrders.length === 0 ? (
+          {filteredOrders.length === 0 ? (
             <div className="p-8 text-center">
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--color-green-soft)] text-[var(--color-green-dark)]">
                 <ShoppingBag size={34} strokeWidth={2.4} />
@@ -526,13 +536,13 @@ function VendorOrdersPage() {
                         </select>
 
                         {isUpdating && (
-                          <div className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[var(--color-bg)] px-4 py-2.5 text-xs font-black text-[var(--color-muted)]">
+                          <div className="inline-flex items-center justify-center rounded-2xl bg-[var(--color-bg)] px-4 py-2.5 text-xs font-black text-[var(--color-muted)]">
                             <Loader2
                               size={14}
                               strokeWidth={2.7}
                               className="animate-spin"
+                              aria-hidden="true"
                             />
-                            Inabadilisha...
                           </div>
                         )}
                       </div>

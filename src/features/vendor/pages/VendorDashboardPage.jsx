@@ -291,6 +291,10 @@ function VendorDashboardPage() {
     window.open(link, "_blank", "noopener,noreferrer")
   }
 
+  if (isLoading) {
+    return null
+  }
+
   if (!vendor) {
     return (
       <section className="min-h-screen overflow-x-hidden bg-[var(--color-bg)] px-4 py-8 text-[var(--color-text)] md:px-6">
@@ -334,14 +338,6 @@ function VendorDashboardPage() {
         {error && (
           <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4">
             <p className="text-sm font-bold text-red-700">{error}</p>
-          </div>
-        )}
-
-        {isLoading && (
-          <div className="mb-5 rounded-2xl border border-[var(--color-border)] bg-white p-4">
-            <p className="text-sm font-bold text-[var(--color-muted)]">
-              Inapakia taarifa za dashboard...
-            </p>
           </div>
         )}
 

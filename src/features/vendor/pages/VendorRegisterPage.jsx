@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Eye,
   EyeOff,
+  Loader2,
   Lock,
   MapPin,
   MessageCircle,
@@ -687,8 +688,19 @@ function VendorRegisterPage() {
               disabled={isSubmitting}
               className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--color-green)] px-5 py-3 text-sm font-black text-[var(--color-navy)] transition hover:bg-[var(--color-green-dark)] hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
             >
-              {isSubmitting ? "Inasajili..." : "Fungua Duka Langu"}
-              <ArrowRight size={16} strokeWidth={2.7} />
+              {isSubmitting ? (
+                <Loader2
+                  size={17}
+                  strokeWidth={2.7}
+                  className="animate-spin"
+                  aria-hidden="true"
+                />
+              ) : (
+                <>
+                  Fungua Duka Langu
+                  <ArrowRight size={16} strokeWidth={2.7} />
+                </>
+              )}
             </button>
 
             <div className="mt-5 flex items-center justify-between gap-3 rounded-2xl bg-[var(--color-bg)] p-4">

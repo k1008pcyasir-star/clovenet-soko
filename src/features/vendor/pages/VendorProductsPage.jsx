@@ -6,6 +6,7 @@ import {
   Edit3,
   Eye,
   ImagePlus,
+  Loader2,
   LockKeyhole,
   Package,
   Plus,
@@ -193,6 +194,7 @@ function VendorProductsPage() {
   const [success, setSuccess] = useState("")
   const [editingProductId, setEditingProductId] = useState("")
   const [isLoading, setIsLoading] = useState(true)
+  const [hasLoaded, setHasLoaded] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
   const vendor = useMemo(() => {
@@ -236,6 +238,7 @@ function VendorProductsPage() {
       setError(loadError?.message || "Imeshindikana kupakia bidhaa.")
     } finally {
       setIsLoading(false)
+      setHasLoaded(true)
     }
   }
 
@@ -244,6 +247,7 @@ function VendorProductsPage() {
       loadVendorProducts()
     } else {
       setIsLoading(false)
+      setHasLoaded(true)
     }
   }, [vendor])
 
@@ -479,6 +483,10 @@ function VendorProductsPage() {
     }
   }
 
+  if (isLoading && !hasLoaded) {
+    return null
+  }
+
   if (!vendor) {
     return (
       <section className="min-h-screen bg-[var(--color-bg)] px-4 py-8 text-[var(--color-text)] md:px-6">
@@ -607,12 +615,6 @@ function VendorProductsPage() {
                 {error || success}
               </p>
             </div>
-          </div>
-        )}
-
-        {isLoading && (
-          <div className="mb-5 rounded-2xl border border-[var(--color-border)] bg-white p-4 text-sm font-bold text-[var(--color-muted)]">
-            Inapakia bidhaa...
           </div>
         )}
 
@@ -913,12 +915,19 @@ function VendorProductsPage() {
                 disabled={hasReachedLimit || isSaving}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--color-green)] px-5 py-3 text-sm font-black text-[var(--color-navy)] transition hover:bg-[var(--color-green-dark)] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <Save size={16} strokeWidth={2.7} />
-                {isSaving
-                  ? "Inahifadhi..."
-                  : isEditing
-                    ? "Hifadhi Mabadiliko"
-                    : "Hifadhi Bidhaa"}
+                {isSaving ? (
+                  <Loader2
+                    size={17}
+                    strokeWidth={2.7}
+                    className="animate-spin"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <>
+                    <Save size={16} strokeWidth={2.7} />
+                    {isEditing ? "Hifadhi Mabadiliko" : "Hifadhi Bidhaa"}
+                  </>
+                )}
               </button>
 
               {isEditing && (
@@ -948,7 +957,7 @@ function VendorProductsPage() {
               </div>
             </div>
 
-            {!isLoading && vendorProducts.length === 0 ? (
+            {vendorProducts.length === 0 ? (
               <div className="mt-6 rounded-[2rem] bg-[var(--color-bg)] p-6 text-center">
                 <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--color-green-soft)] text-[var(--color-green-dark)]">
                   <Package size={34} strokeWidth={2.4} />

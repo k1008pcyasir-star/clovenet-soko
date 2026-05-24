@@ -255,25 +255,7 @@ function VendorProfilePage() {
   }
 
   if (isLoading && !vendor) {
-    return (
-      <section className="min-h-screen bg-[var(--color-bg)] px-4 py-8 text-[var(--color-text)] md:px-6">
-        <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-3xl items-center justify-center">
-          <div className="w-full rounded-[2rem] border border-[var(--color-border)] bg-white p-6 text-center shadow-sm md:p-10">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[1.5rem] bg-[var(--color-green-soft)] text-[var(--color-green-dark)]">
-              <Loader2 size={32} strokeWidth={2.5} className="animate-spin" />
-            </div>
-
-            <h1 className="mt-5 text-2xl font-black text-gray-950">
-              Inapakia profile...
-            </h1>
-
-            <p className="mx-auto mt-3 max-w-md text-sm font-semibold leading-6 text-[var(--color-muted)]">
-              Tafadhali subiri wakati tunachukua taarifa za duka kutoka database.
-            </p>
-          </div>
-        </div>
-      </section>
-    )
+    return null
   }
 
   if (!vendor) {
@@ -642,14 +624,12 @@ function VendorProfilePage() {
               className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--color-green)] px-5 py-3 text-sm font-black text-[var(--color-navy)] transition hover:bg-[var(--color-green-dark)] hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
             >
               {isSaving ? (
-                <>
-                  <Loader2
-                    size={16}
-                    strokeWidth={2.7}
-                    className="animate-spin"
-                  />
-                  Inahifadhi...
-                </>
+                <Loader2
+                  size={17}
+                  strokeWidth={2.7}
+                  className="animate-spin"
+                  aria-hidden="true"
+                />
               ) : (
                 <>
                   <Save size={16} strokeWidth={2.7} />
