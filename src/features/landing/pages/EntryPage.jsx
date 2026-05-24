@@ -7,7 +7,6 @@ import {
   ChevronLeft,
   ChevronRight,
   HelpCircle,
-  Loader2,
   MapPin,
   Menu,
   MessageCircle,
@@ -726,14 +725,7 @@ function EntryPage() {
             </button>
           </div>
 
-          {isLoading ? (
-            <div className="rounded-[1.7rem] border border-[var(--color-border)] bg-[var(--color-bg)] p-8 text-center shadow-sm md:rounded-[2rem] md:p-10">
-              <div className="flex items-center justify-center gap-3 text-sm font-black text-[var(--color-muted)]">
-                <Loader2 className="animate-spin" size={20} strokeWidth={2.6} />
-                Inapakia bidhaa kutoka backend...
-              </div>
-            </div>
-          ) : featuredProducts.length > 0 && activeFeaturedProduct ? (
+          {isLoading ? null : featuredProducts.length > 0 && activeFeaturedProduct ? (
             <>
               <div className="grid gap-4 lg:grid-cols-[1.08fr_0.92fr]">
                 <article
@@ -938,7 +930,9 @@ function EntryPage() {
                               ? "w-8 bg-[var(--color-green)]"
                               : "w-2.5 bg-gray-300"
                           }`}
-                          aria-label={`Nenda kwenye featured product ${index + 1}`}
+                          aria-label={`Nenda kwenye featured product ${
+                            index + 1
+                          }`}
                         />
                       ))}
                     </div>

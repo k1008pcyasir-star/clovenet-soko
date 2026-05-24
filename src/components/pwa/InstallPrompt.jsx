@@ -18,7 +18,7 @@ function setDismissForHours(hours) {
     const dismissUntil = Date.now() + hours * 60 * 60 * 1000
     localStorage.setItem(INSTALL_DISMISSED_KEY, String(dismissUntil))
   } catch {
-    // Ignore localStorage errors
+    return undefined
   }
 }
 
@@ -113,18 +113,22 @@ function InstallPrompt() {
   async function handleInstall() {
     if (!deferredPrompt) return
 
-    deferredPrompt.prompt()
+    try {
+      deferredPrompt.prompt()
 
-    const { outcome } = await deferredPrompt.userChoice
+      const { outcome } = await deferredPrompt.userChoice
 
-    if (outcome === "accepted") {
-      setDismissForHours(INSTALLED_HIDE_HOURS)
-    } else {
+      if (outcome === "accepted") {
+        setDismissForHours(INSTALLED_HIDE_HOURS)
+      } else {
+        setDismissForHours(DISMISS_HOURS)
+      }
+    } catch {
       setDismissForHours(DISMISS_HOURS)
+    } finally {
+      setDeferredPrompt(null)
+      setIsVisible(false)
     }
-
-    setDeferredPrompt(null)
-    setIsVisible(false)
   }
 
   function handleDismiss() {
@@ -147,7 +151,7 @@ function InstallPrompt() {
         <button
           type="button"
           onClick={handleDismiss}
-          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-bg)] text-gray-500 transition hover:text-gray-900"
+          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-bg)] text-gray-500 transition hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-green)] focus-visible:ring-offset-2"
           aria-label="Funga"
         >
           <X size={16} strokeWidth={2.7} />
@@ -207,7 +211,7 @@ function InstallPrompt() {
           <button
             type="button"
             onClick={handleDismiss}
-            className="mt-4 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] py-2.5 text-xs font-black text-gray-600 transition hover:bg-white"
+            className="mt-4 w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] py-2.5 text-xs font-black text-gray-600 transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-green)] focus-visible:ring-offset-2"
           >
             Sawa, Nimeelewa
           </button>
@@ -221,7 +225,7 @@ function InstallPrompt() {
       <button
         type="button"
         onClick={handleDismiss}
-        className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-bg)] text-gray-500 transition hover:text-gray-900"
+        className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-bg)] text-gray-500 transition hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-green)] focus-visible:ring-offset-2"
         aria-label="Funga install prompt"
       >
         <X size={16} strokeWidth={2.7} />
@@ -248,7 +252,7 @@ function InstallPrompt() {
         <button
           type="button"
           onClick={handleInstall}
-          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--color-green)] px-4 py-3 text-sm font-black text-[var(--color-navy)] transition hover:bg-[var(--color-green-dark)] hover:text-white"
+          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--color-green)] px-4 py-3 text-sm font-black text-[var(--color-navy)] transition hover:bg-[var(--color-green-dark)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-green)] focus-visible:ring-offset-2"
         >
           <Download size={17} strokeWidth={2.7} />
           Sakinisha App

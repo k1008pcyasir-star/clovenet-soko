@@ -5,9 +5,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Gift,
-  Loader2,
   MapPin,
-  MessageCircle,
   Package,
   ShieldCheck,
   ShoppingBag,
@@ -84,43 +82,7 @@ function StorePage() {
   }, [store])
 
   if (isLoading) {
-    return (
-      <section className="min-h-screen overflow-x-hidden bg-[var(--color-bg)] text-[var(--color-text)]">
-        <header className="sticky top-0 z-30 border-b border-[var(--color-border)] bg-[var(--color-bg)]/95 backdrop-blur-md">
-          <div className="mx-auto flex max-w-7xl items-center gap-3 px-3 py-3 md:px-6">
-            <button
-              type="button"
-              onClick={() => navigate("/soko")}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-navy)] text-white shadow-sm transition hover:bg-[var(--color-navy-soft)] md:h-11 md:w-11"
-              aria-label="Rudi sokoni"
-            >
-              <ArrowLeft size={21} strokeWidth={2.7} />
-            </button>
-
-            <div className="min-w-0">
-              <p className="truncate text-sm font-black leading-tight text-gray-950 md:text-base">
-                Inapakia duka...
-              </p>
-
-              <p className="truncate text-[10px] font-semibold text-[var(--color-muted)]">
-                CloveNet Soko
-              </p>
-            </div>
-          </div>
-        </header>
-
-        <main className="mx-auto max-w-4xl px-3 py-6 pb-28 md:px-6 md:py-8 md:pb-8">
-          <div className="rounded-[1.5rem] border border-[var(--color-border)] bg-white p-8 shadow-sm md:rounded-[2rem] md:p-10">
-            <div className="flex items-center justify-center gap-3 text-sm font-black text-[var(--color-muted)]">
-              <Loader2 className="animate-spin" size={20} strokeWidth={2.6} />
-              Inapakia taarifa za duka kutoka backend...
-            </div>
-          </div>
-        </main>
-
-        <MobileBottomNav active="stores" />
-      </section>
-    )
+    return null
   }
 
   if (!vendor) {

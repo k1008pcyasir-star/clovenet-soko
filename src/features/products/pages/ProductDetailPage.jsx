@@ -8,7 +8,6 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  Loader2,
   MapPin,
   Package,
   SearchX,
@@ -156,8 +155,9 @@ function ProductDetailPage() {
   }
 
   function openStore() {
-    if (!product?.vendor?.id) return
-    navigate(`/store/${product.vendor.id}`)
+    const vendorId = getVendorId(product)
+    if (!vendorId) return
+    navigate(`/store/${vendorId}`)
   }
 
   function goToPreviousImage() {
@@ -177,43 +177,7 @@ function ProductDetailPage() {
   }
 
   if (isLoading) {
-    return (
-      <section className="min-h-screen overflow-x-hidden bg-[var(--color-bg)] text-[var(--color-text)]">
-        <header className="sticky top-0 z-30 border-b border-[var(--color-border)] bg-[var(--color-bg)]/95 backdrop-blur-md">
-          <div className="mx-auto flex max-w-7xl items-center gap-3 px-3 py-3 md:px-6">
-            <button
-              type="button"
-              onClick={() => navigate("/soko")}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-navy)] text-white shadow-sm transition hover:bg-[var(--color-navy-soft)] md:h-11 md:w-11"
-              aria-label="Rudi sokoni"
-            >
-              <ArrowLeft size={21} strokeWidth={2.7} />
-            </button>
-
-            <div className="min-w-0">
-              <p className="truncate text-sm font-black leading-tight text-gray-950 md:text-base">
-                Maelezo ya Bidhaa
-              </p>
-
-              <p className="truncate text-[10px] font-semibold text-[var(--color-muted)]">
-                CloveNet Soko
-              </p>
-            </div>
-          </div>
-        </header>
-
-        <main className="mx-auto max-w-4xl px-3 py-6 pb-28 md:px-6 md:py-8 md:pb-8">
-          <div className="rounded-[1.5rem] border border-[var(--color-border)] bg-white p-8 shadow-sm md:rounded-[2rem] md:p-10">
-            <div className="flex items-center justify-center gap-3 text-sm font-black text-[var(--color-muted)]">
-              <Loader2 className="animate-spin" size={20} strokeWidth={2.6} />
-              Inapakia bidhaa kutoka backend...
-            </div>
-          </div>
-        </main>
-
-        <MobileBottomNav active="soko" />
-      </section>
-    )
+    return null
   }
 
   if (!product) {
@@ -521,22 +485,11 @@ function ProductDetailPage() {
                 onClick={handleWhatsAppOrder}
                 disabled={isOrdering}
                 className="inline-flex min-h-[3rem] min-w-0 items-center justify-center gap-2 rounded-2xl bg-[#25D366] px-3 py-3 text-sm font-black text-white transition hover:bg-[#1FAF55] focus-visible:ring-2 focus-visible:ring-[#25D366] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70 md:px-4"
+                aria-label={`Agiza ${product.name || "bidhaa"} kwa WhatsApp`}
+                title="Agiza kwa WhatsApp"
               >
-                {isOrdering ? (
-                  <>
-                    <Loader2
-                      size={17}
-                      strokeWidth={2.7}
-                      className="animate-spin"
-                    />
-                    <span className="truncate">Inatuma</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="text-base leading-none">💬</span>
-                    <span className="truncate">WhatsApp</span>
-                  </>
-                )}
+                <span className="text-base leading-none">💬</span>
+                <span className="truncate">WhatsApp</span>
               </button>
             </div>
 

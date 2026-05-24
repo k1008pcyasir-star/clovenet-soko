@@ -19,13 +19,13 @@ const navItems = [
   },
   {
     key: "stores",
-    label: "Shops",
+    label: "Maduka",
     icon: Store,
     path: "/soko",
   },
   {
     key: "cart",
-    label: "Cart",
+    label: "Kikapu",
     icon: ShoppingCart,
     path: "/cart",
   },
@@ -64,21 +64,24 @@ function MobileBottomNav({ active = "soko" }) {
       setCartCount(getCartCount())
     }
 
+    function handleVisibilityChange() {
+      if (!document.hidden) {
+        updateCartCount()
+      }
+    }
+
     updateCartCount()
 
     window.addEventListener("storage", updateCartCount)
     window.addEventListener("focus", updateCartCount)
-    window.addEventListener("visibilitychange", updateCartCount)
     window.addEventListener("clovenet-cart-updated", updateCartCount)
-
-    const intervalId = window.setInterval(updateCartCount, 1000)
+    document.addEventListener("visibilitychange", handleVisibilityChange)
 
     return () => {
       window.removeEventListener("storage", updateCartCount)
       window.removeEventListener("focus", updateCartCount)
-      window.removeEventListener("visibilitychange", updateCartCount)
       window.removeEventListener("clovenet-cart-updated", updateCartCount)
-      window.clearInterval(intervalId)
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
     }
   }, [])
 
@@ -100,7 +103,8 @@ function MobileBottomNav({ active = "soko" }) {
               key={item.key}
               type="button"
               onClick={() => handleNavigate(item.path)}
-              className={`relative rounded-2xl px-2 py-2 text-xs font-black transition ${
+              aria-label={item.label}
+              className={`relative rounded-2xl px-2 py-2 text-xs font-black transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-green)] focus-visible:ring-offset-2 ${
                 isActive
                   ? "bg-[var(--color-green-soft)] text-[var(--color-green-dark)]"
                   : "text-gray-400 hover:bg-gray-50 hover:text-gray-700"

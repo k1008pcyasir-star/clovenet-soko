@@ -396,11 +396,14 @@ function CartPage() {
                             size={16}
                             strokeWidth={2.7}
                             className="animate-spin"
+                            aria-hidden="true"
                           />
                         ) : (
-                          <MessageCircle size={16} strokeWidth={2.7} />
+                          <>
+                            <MessageCircle size={16} strokeWidth={2.7} />
+                            Agiza kwa Vendor Huyu
+                          </>
                         )}
-                        {isOrdering ? "Inahifadhi..." : "Agiza kwa Vendor Huyu"}
                       </button>
                     </div>
                   </div>

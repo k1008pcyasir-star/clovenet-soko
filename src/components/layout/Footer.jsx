@@ -15,11 +15,9 @@ function Footer() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  const goTo = (path) => {
-    const currentPath = `${location.pathname}${location.hash}`
+  function goTo(path) {
+    const currentPath = `${location.pathname}${location.search}${location.hash}`
 
-    // Kama user yupo tayari kwenye route hiyo hiyo,
-    // mpeleke juu instantly bila animation
     if (currentPath === path || location.pathname === path) {
       window.scrollTo({
         top: 0,
@@ -35,7 +33,6 @@ function Footer() {
   return (
     <footer className="mt-8 bg-[var(--color-navy)] text-white">
       <div className="mx-auto grid max-w-7xl gap-8 px-5 py-10 sm:grid-cols-2 md:px-6 lg:grid-cols-4">
-        {/* Brand */}
         <div>
           <BrandLogo
             light
@@ -54,16 +51,15 @@ function Footer() {
           <button
             type="button"
             onClick={() => goTo("/support")}
-            className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl bg-[var(--color-green)] px-5 py-3 text-sm font-black text-[var(--color-navy)] transition hover:bg-[var(--color-green-dark)] hover:text-white"
+            className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl bg-[var(--color-green)] px-5 py-3 text-sm font-black text-[var(--color-navy)] transition hover:bg-[var(--color-green-dark)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-green)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy)]"
           >
             <MessageCircle size={17} strokeWidth={2.7} />
             Pata Msaada
           </button>
         </div>
 
-        {/* Quick Links */}
         <div>
-          <h4 className="text-lg font-black">Quick Links</h4>
+          <h4 className="text-lg font-black">Viungo Muhimu</h4>
 
           <div className="mt-5 space-y-3 text-sm font-semibold text-slate-400">
             <FooterButton onClick={() => goTo("/soko")}>
@@ -88,7 +84,6 @@ function Footer() {
           </div>
         </div>
 
-        {/* Vendor Links */}
         <div>
           <h4 className="text-lg font-black">Kwa Wafanyabiashara</h4>
 
@@ -110,7 +105,6 @@ function Footer() {
           </div>
         </div>
 
-        {/* Support and Legal */}
         <div>
           <h4 className="text-lg font-black">Msaada na Taarifa</h4>
 
@@ -122,7 +116,7 @@ function Footer() {
 
             <FooterButton onClick={() => goTo("/privacy")}>
               <ShieldCheck size={15} strokeWidth={2.6} />
-              Privacy Policy
+              Sera ya Faragha
             </FooterButton>
 
             <FooterButton onClick={() => goTo("/terms")}>
@@ -145,7 +139,7 @@ function FooterButton({ children, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center gap-2 text-left transition hover:text-[var(--color-green)]"
+      className="flex items-center gap-2 text-left transition hover:text-[var(--color-green)] focus-visible:outline-none focus-visible:text-[var(--color-green)]"
     >
       {children}
     </button>

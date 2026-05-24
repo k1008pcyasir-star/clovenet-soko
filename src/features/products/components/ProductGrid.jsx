@@ -104,7 +104,8 @@ function ProductGrid({ products = [] }) {
     navigate(`/product/${productId}`)
   }
 
-  function openStore(vendorId) {
+  function openStore(product) {
+    const vendorId = getVendorId(product)
     if (!vendorId) return
     navigate(`/store/${vendorId}`)
   }
@@ -202,7 +203,7 @@ function ProductGrid({ products = [] }) {
 
               <button
                 type="button"
-                onClick={() => openStore(product.vendor?.id)}
+                onClick={() => openStore(product)}
                 className="mt-1 block max-w-full text-left text-xs font-semibold text-[var(--color-muted)] outline-none transition hover:text-[var(--color-green-dark)] focus-visible:ring-2 focus-visible:ring-[var(--color-green)] focus-visible:ring-offset-2"
                 aria-label={`Fungua duka la ${
                   product.vendor?.storeName || "vendor"
@@ -257,14 +258,12 @@ function ProductGrid({ products = [] }) {
                   title="Agiza kwa WhatsApp"
                 >
                   {isOrdering ? (
-                    <>
-                      <Loader2
-                        size={15}
-                        strokeWidth={2.7}
-                        className="animate-spin"
-                      />
-                      Inatuma
-                    </>
+                    <Loader2
+                      size={16}
+                      strokeWidth={2.7}
+                      className="animate-spin"
+                      aria-hidden="true"
+                    />
                   ) : (
                     <>
                       <span className="text-sm leading-none">💬</span>

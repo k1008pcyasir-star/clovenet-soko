@@ -7,7 +7,6 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  Loader2,
   MapPin,
   MessageCircle,
   Package,
@@ -1061,14 +1060,7 @@ function CustomerPage() {
           id="products-section"
           className={isFiltering || !verifiedVendors.length ? "mt-5" : "mt-6"}
         >
-          {isLoading ? (
-            <div className="rounded-[2rem] border border-[var(--color-border)] bg-white p-10 text-center shadow-sm">
-              <div className="flex items-center justify-center gap-3 text-sm font-black text-[var(--color-muted)]">
-                <Loader2 className="animate-spin" size={20} strokeWidth={2.6} />
-                Inapakia bidhaa kutoka backend...
-              </div>
-            </div>
-          ) : hasProducts ? (
+          {isLoading ? null : hasProducts ? (
             <>
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div className="min-w-0">
